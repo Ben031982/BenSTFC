@@ -1,5 +1,9 @@
 import Foundation
 import SwiftUI
+import os
+
+/// Logger for launcher actions
+private let logger = Logger(subsystem: "com.stfcmod.startrekpatch", category: "launcher")
 
 struct ActionView: View, XSollaUpdaterDelegate {
 
@@ -12,6 +16,8 @@ struct ActionView: View, XSollaUpdaterDelegate {
   @State private var updateProgress: Float = 0.0
   @State private var gameInstalled: Bool = false
   @State private var gameRunning: Bool = false
+  @State private var showErrorAlert: Bool = false
+  @State private var errorMessage: String = ""
   private var model = PulsatingViewModel()
 
   func updateProgress(progress: XsollaUpdateProgress) {
@@ -83,7 +89,7 @@ struct ActionView: View, XSollaUpdaterDelegate {
                       updateSubAction = "Planning"
                       try await gameUpdater.updateGame(delegate: self)
                     } catch {
-                      print("Error updating game: \(error)")
+                      logger.error("Error updating game: \(error.localizedDescription)")
                     }
                     updating = false
                     gameVersion = gameUpdater.getInstalledGameVersion()
@@ -156,6 +162,11 @@ struct ActionView: View, XSollaUpdaterDelegate {
           .offset(x: 115, y: 10)
         }
       }
+      .alert("Error", isPresented: $showErrorAlert) {
+        Button("OK", role: .cancel) {}
+      } message: {
+        Text(errorMessage)
+      }
     }
   }
 
@@ -201,6 +212,28 @@ struct ActionView: View, XSollaUpdaterDelegate {
       DispatchQueue.main.async {
         gameRunning = true
       }
+
+      // Ensure the game has the required entitlements before launching
+      do {
+        try ensureGameHasLoaderEntitlements()
+      } catch let error as EntitlementError {
+        logger.error("Error ensuring game entitlements: \(error.localizedDescription)")
+        DispatchQueue.main.async {
+          errorMessage = error.localizedDescription
+          showErrorAlert = true
+          gameRunning = false
+        }
+        return
+      } catch {
+        logger.error("Error ensuring game entitlements: \(error.localizedDescription)")
+        DispatchQueue.main.async {
+          errorMessage = "Failed to prepare game for launch: \(error.localizedDescription)"
+          showErrorAlert = true
+          gameRunning = false
+        }
+        return
+      }
+
       let process = Process()
       let helper = Bundle.main.path(forAuxiliaryExecutable: "stfc-community-patch-loader")
       process.executableURL = URL(fileURLWithPath: helper!)

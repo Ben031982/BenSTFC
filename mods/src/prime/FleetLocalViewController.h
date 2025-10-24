@@ -44,6 +44,8 @@ public:
       RequestActionWarn = false;
       ErrorMsg::MissingMethod("FleetLocalViewController", "RequestAction");
     }
+
+    return false;
   }
 
 private:

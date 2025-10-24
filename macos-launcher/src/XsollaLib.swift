@@ -1,4 +1,8 @@
 import Foundation
+import os
+
+/// Logger for Xsolla operations
+private let logger = Logger(subsystem: "com.stfcmod.startrekpatch", category: "xsolla")
 
 struct DownloadAction {
   var url: String
@@ -82,7 +86,7 @@ class XsollaUpdateParser: NSObject, XMLParserDelegate {
         actions.append(XsollaUpdateAction.Version(VersionAction(version: gameVersion)))
         break
       default:
-        print("Unknown action type: \(attributeDict["type"]!)")
+        logger.warning("Unknown action type: \(attributeDict["type"]!)")
         break
       }
     }
@@ -314,7 +318,7 @@ struct XsollaUpdater {
             do {
               try FileManager.default.removeItem(at: sourcePath)
             } catch {
-              print("Error deleting file \(sourcePath)")
+              logger.error("Error deleting file \(sourcePath.path): \(error.localizedDescription)")
             }
           case "copy":
             if !FileManager.default.fileExists(atPath: targetPath.path) {
@@ -325,7 +329,7 @@ struct XsollaUpdater {
             try FileManager.default.copyItem(at: patchPath, to: targetPath)
             break
           default:
-            print("Unknown rule \(rule.rule)")
+            logger.warning("Unknown rule \(rule.rule)")
             break
           }
           delegate?.updateProgress(progress: XsollaUpdateProgress.PatchStepComplete)
@@ -361,7 +365,7 @@ func copyContentsOfDirectory(from sourceURL: URL, to targetURL: URL) {
     let sourceContents = try? fileManager.contentsOfDirectory(
       at: sourceURL, includingPropertiesForKeys: nil)
   else {
-    print("Error accessing contents of directory at \(sourceURL.path)")
+    logger.error("Error accessing contents of directory at \(sourceURL.path)")
     return
   }
 
@@ -384,7 +388,7 @@ func copyContentsOfDirectory(from sourceURL: URL, to targetURL: URL) {
         try fileManager.copyItem(at: sourceItem, to: destinationItem)
       }
     } catch {
-      print("Error copying \(sourceItem.lastPathComponent) to \(destinationItem.path): \(error)")
+      logger.error("Error copying \(sourceItem.lastPathComponent) to \(destinationItem.path): \(error.localizedDescription)")
     }
   }
 }

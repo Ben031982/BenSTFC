@@ -27,26 +27,11 @@ int64_t InventoryForPopup_set_MaxItemsToUse(auto original, InventoryForPopup* a1
     if (max > 0) {
       a2 = max;
     } else {
-      return 0;
+      return -1;
     }
   }
 
   int64_t standard = original(a1, a2);
-  return standard;
-}
-
-int64_t InventoryForPopup_get_MaxItemsToUse(auto original, InventoryForPopup* a1)
-{
-  int64_t standard = original(a1);
-  if (/*a1->IsDonationUse && */ standard == 50 && Config::Get().extend_donation_slider) {
-    const auto max = Config::Get().extend_donation_max;
-    if (max > 0) {
-      standard = max;
-    } else {
-      standard = 0;
-    }
-  }
-
   return standard;
 }
 
@@ -67,16 +52,9 @@ void InstallMiscPatches()
   } else {
     auto ptr = h.GetMethod("set_MaxItemsToUse");
     if (!ptr) {
-      ErrorMsg::MissingMethod("InventoryForPopup", "get_MaxItemsToUse");
+      ErrorMsg::MissingMethod("InventoryForPopup", "set_MaxItemsToUse");
     } else {
       SPUD_STATIC_DETOUR(ptr, InventoryForPopup_set_MaxItemsToUse);
-    }
-
-    ptr = h.GetMethod("get_MaxItemsToUse");
-    if (!ptr) {
-      ErrorMsg::MissingMethod("InventoryForPopup", "get_MaxItemsToUse");
-    } else {
-      SPUD_STATIC_DETOUR(ptr, InventoryForPopup_get_MaxItemsToUse);
     }
   }
 

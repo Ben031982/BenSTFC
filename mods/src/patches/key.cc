@@ -188,9 +188,9 @@ bool Key::IsModifier(KeyCode key)
     case KeyCode::RightShift:
     case KeyCode::RightWindows:
       return true;
+    default:
+      return false;
   }
-
-  return false;
 }
 
 bool Key::IsModified()

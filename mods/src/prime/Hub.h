@@ -155,6 +155,8 @@ public:
       GetStateWarn = false;
       ErrorMsg::MissingMethod("SectionStorage", "GetState");
     }
+
+    return nullptr;
   }
 
 private:
@@ -178,6 +180,8 @@ public:
       ContainsWarn = false;
       ErrorMsg::MissingMethod("SectionNavHistory", "Contains");
     }
+
+    return false;
   }
 
 private:

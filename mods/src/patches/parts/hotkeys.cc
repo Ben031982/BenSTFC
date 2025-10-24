@@ -1,5 +1,4 @@
 #include "config.h"
-#include "prime_types.h"
 
 #include <spud/detour.h>
 
@@ -14,7 +13,6 @@
 #include "prime/StarNodeObjectViewerWidget.h"
 
 #include "prime/ActionQueueManager.h"
-#include "prime/ActionRequirement.h"
 #include "prime/AnimatedRewardsScreenViewController.h"
 #include "prime/BookmarksManager.h"
 #include "prime/ChatManager.h"
@@ -30,14 +28,11 @@
 #include "prime/NavigationSectionManager.h"
 #include "prime/PreScanTargetWidget.h"
 #include "prime/ScanEngageButtonsWidget.h"
-#include "prime/ScanTargetViewController.h"
-#include "prime/SceneManager.h"
 #include "prime/ScreenManager.h"
 
 #include "patches/key.h"
 #include "patches/mapkey.h"
 
-#include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
 
 #include <iostream>
@@ -158,7 +153,7 @@ void ScreenManager_Update_Hook(auto original, ScreenManager* _this)
         std::chrono::time_point<std::chrono::steady_clock> select_now = std::chrono::steady_clock::now();
         std::chrono::milliseconds                          select_diff =
             std::chrono::duration_cast<std::chrono::milliseconds>(select_now - select_clock);
-        spdlog::info("DBG: select_diff was {}ms", select_diff.count());
+        spdlog::debug("select_diff was {}ms", select_diff.count());
         if (can_locate && fleet_bar->IsIndexSelected(ship_select_request)
             && select_diff < std::chrono::milliseconds((int)Config::Get().select_timer)) {
           auto fleet = fleet_bar->_fleetPanelController->fleet;
@@ -342,14 +337,6 @@ void ScreenManager_Update_Hook(auto original, ScreenManager* _this)
         return chat_manager->OpenChannel(ChatChannelCategory::Alliance);
       } else if (MapKey::IsDown(GameFunction::SelectChatPrivate)) {
         return chat_manager->OpenChannel(ChatChannelCategory::Private);
-      }
-    }
-
-    if (MapKey::IsDown(GameFunction::ActionView)) {
-      if (auto view_controller = ObjectFinder<FullScreenChatViewController>::Get(); view_controller) {
-        if (view_controller->_messageList && view_controller->_messageList->_inputField) {
-          return view_controller->_messageList->_inputField->ActivateInputField();
-        }
       }
     }
   }

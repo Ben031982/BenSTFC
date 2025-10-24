@@ -61,6 +61,8 @@ public:
       IsIndexSelectedWarn = false;
       ErrorMsg::MissingMethod("FleetBarViewController", "IsIndexSelected");
     }
+
+    return false;
   }
 
   FleetBarContext* CanvasContext()

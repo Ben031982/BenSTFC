@@ -6,9 +6,11 @@ CONFIG=${1:-release}
 ARCH=arm64
 
 xmake clean
-# xmake m package --plat=macosx --arch="arm64,x86_64" -f "--mode=$CONFIG --yes"
+# Build the arm64 version
 xmake f -y -p macosx -a "arm64" -m $CONFIG
 xmake
+
+# Build the x86_64 version
 xmake f -y -p macosx -a "x86_64" -m $CONFIG
 xmake
 

@@ -98,6 +98,19 @@ public:
   }
 };
 
+void Cursor_SetCursor(auto original, void* _this, ptrdiff_t texture, Vector2* hotspot, int cursorMode)
+{
+#if _WIN32
+  if (!Config::Get().allow_cursor) {
+    SetCursor(LoadCursor(NULL, IDC_ARROW));
+    ClipCursor(nullptr); // free cursor from any Unity clipping
+    return;
+  }
+#endif
+
+  return original(_this, texture, hotspot, cursorMode);
+}
+
 AppConfig* Model_LoadConfigs(auto original, Model* _this)
 {
   original(_this);
@@ -149,6 +162,18 @@ bool IsQueueEnabled(auto original, void* _this)
 
 void InstallTestPatches()
 {
+  auto cursorManager = il2cpp_get_class_helper("UnityEngine.CoreModule", "UnityEngine", "Cursor");
+  if (!cursorManager.isValidHelper()) {
+    ErrorMsg::MissingHelper("UnityEngine", "Cursor");
+  } else {
+    auto cursorMethod = cursorManager.GetMethod("SetCursor_Injected");
+    if (cursorMethod == nullptr) {
+      ErrorMsg::MissingMethod("Cursor", "SetCursor_Injected");
+    } else {
+      SPUD_STATIC_DETOUR(cursorMethod, Cursor_SetCursor);
+    }
+  }
+
   auto model = il2cpp_get_class_helper("Assembly-CSharp", "Digit.Client.Core", "Model");
   if (!model.isValidHelper()) {
     ErrorMsg::MissingHelper("Core", "Model");

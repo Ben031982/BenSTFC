@@ -1,12 +1,10 @@
 # Star Trek Fleet Command - Community Mod
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPLv3">
-  <img src="https://img.shields.io/github/sponsors/netniv" alt="Sponsorship">
-</p>
-
-<p align="center">
-   A community mod (patch) that adds a couple of tweaks to the mobile game <b>Star Trek Fleet Command&#8482;</b>
+    <img src="https://repository-images.githubusercontent.com/693298224/6a87716f-3dbb-48a5-80e0-709e0a1ad133" alt="STFC Community Mod">
+    <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPLv3">  
+    <img src="https://img.shields.io/github/sponsors/netniv" alt="Sponsorship"><br>
+    A community mod (patch) that adds a couple of tweaks to the mobile game <b>Star Trek Fleet Command&#8482;
 </p>
 
 ## Contributing / Development

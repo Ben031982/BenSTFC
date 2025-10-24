@@ -7,12 +7,50 @@ on:
   pull_request:
     branches: ["main", "dev"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-win:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          submodules: "recursive"
+
+      - name: Setup
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+          package-cache: true
+          package-cache-key: ${{ hashFiles('**/xmake.lua', '!macos-*/xmake.lua') }}
+          build-cache: true
+          build-cache-key: ${{ hashFiles('**/xmake.lua', '!macos-*/xmake.lua') }}
+          build-cache-path: "build/.build_cache"
+
+      - name: Configure
+        run: xmake f -m release -y
+
+      - name: Build
+        run: xmake -y
+
+      - name: Package
+        run: mv build/windows/x64/release/stfc-community-patch.dll version.dll
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: stfc-community-mod
+          path: version.dll
+          if-no-files-found: error
+
+  build-mac:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
           submodules: "recursive"
 
@@ -21,50 +59,47 @@ jobs:
         with:
           xmake-version: latest
           actions-cache-folder: ".xmake-cache"
-          actions-cache-key: "win-ci"
+          actions-cache-key: ${{ runner.os }}-ci
+          package-cache: true
+          package-cache-key: ${{ hashFiles('**/xmake.lua', '!win-*/xmake.lua') }}
+          build-cache: true
+          build-cache-key: ${{ hashFiles('**/xmake.lua', '!win-*/xmake.lua') }}
+          build-cache-path: "build/.build_cache"
 
-      - name: Configure
-        run: xmake f -m releasedbg -y
+      - name: Configure (arm64)
+        run: xmake f -p macosx -a "arm64" -m release -y
 
-      - name: Build
+      - name: Build (arm64)
         run: xmake -y
 
-      - name: Package
-        run: |
-          mv build/windows/x64/releasedbg/stfc-community-patch.dll version.dll
+      - name: Configure (x86)
+        run: xmake f -p macosx -a "x86_64" -m release -y
 
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: stfc-community-patch
-          path: version.dll
-
-  build-mac:
-    runs-on: macos-15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: "recursive"
-
-      - name: Set up xmake
-        uses: xmake-io/github-action-setup-xmake@v1
-        with:
-          xmake-version: latest
-          actions-cache-folder: ".xmake-cache"
-          actions-cache-key: "mac-ci"
-
-      - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@main
-
-      - name: Install brew things
-        run: brew install create-dmg
+      - name: Build (x86)
+        run: xmake -y
 
       - name: Create App Bundle
-        run: scripts/create-mac-dmg.sh releasedbg
+        run: |
+          lipo -create build/macosx/arm64/release/macOSLauncher build/macosx/x86_64/release/macOSLauncher -output build/macosx/arm64/release/macOSLauncher.app/Contents/MacOS/macOSLauncher
+          lipo -create build/macosx/arm64/release/stfc-community-patch-loader build/macosx/x86_64/release/stfc-community-patch-loader -output build/macosx/arm64/release/macOSLauncher.app/Contents/stfc-community-patch-loader
+          lipo -create build/macosx/arm64/release/libstfc-community-patch.dylib build/macosx/x86_64/release/libstfc-community-patch.dylib -output build/macosx/arm64/release/macOSLauncher.app/Contents/libstfc-community-patch.dylib
+          cp assets/launcher.icns build/macosx/arm64/release/macOSLauncher.app/Contents/Resources/
+          cp macos-launcher/src/Info.plist build/macosx/arm64/release/macOSLauncher.app/Contents/
+          mv build/macosx/arm64/release/macOSLauncher.app build/macosx/arm64/release/STFC\ Community\ Mod.app
+
+      - name: Sign App Bundle
+        run: codesign --force --verify --verbose --deep --sign "-" build/macosx/arm64/release/STFC\ Community\ Mod.app
+
+      - name: Install disk image creation tool
+        run: brew install create-dmg
+
+      - name: Create installer
+        run: create-dmg --filesystem APFS --format ULFO --volname "STFC Community Mod Installer" --volicon assets/launcher.icns --background assets/mac_installer_background.png --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "STFC Community Mod.app" 200 190 --app-drop-link 600 185 stfc-community-mod-installer.dmg build/macosx/arm64/release/
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: stfc-community-patch-installer
-          path: stfc-community-patch-installer.dmg
+          name: stfc-community-mod-installer
+          path: stfc-community-mod-installer.dmg
+          compression-level: 0
+          if-no-files-found: error

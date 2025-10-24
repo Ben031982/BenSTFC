@@ -16,48 +16,8 @@ std::string ConvertWStringToString(const std::wstring& wstr)
 
 std::filesystem::path File::Path()
 {
-  static std::filesystem::path configPath = "";
-
-  if (configPath.empty()) {
-    File::override = false;
-
-#if _WIN32
-    // Get the command line
-    LPCWSTR cmdLine = GetCommandLineW();
-
-    // Parse command line into individual arguments
-    int     argc;
-    LPWSTR* argv = CommandLineToArgvW(cmdLine, &argc);
-
-    // If we have some arguments, lets see what we got
-    std::wstring argValue;
-    if (argv != nullptr) {
-      // Output the arguments (for example purposes, we'll just print them)
-      for (int i = 0; i < argc - 1; ++i) {
-        if (std::wstring(argv[i]) == L"-ccm" && i + 1 < argc) {
-          // Found "-ccm", so take the next argument as the value
-          argValue = argv[i + 1];
-          break;
-        }
-      }
-
-      if (!argValue.empty()) {
-        File::override = true;
-        configPath     = std::filesystem::path(ConvertWStringToString(argValue));
-      }
-
-      // Clean up
-      LocalFree(argv);
-    }
-#endif
-
-    // Second check here is because on windows, it may still be
-    // unset at this point.  On the mac, we do not currently
-    // support multiple configuration files
-    if (configPath.empty()) {
-      File::override = false;
-      configPath     = std::filesystem::path(File::Default());
-    }
+  if (!File::initialized) {
+    File::Init();
   }
 
   return configPath;
@@ -65,9 +25,8 @@ std::filesystem::path File::Path()
 
 const char* File::Default()
 {
-  static std::string cacheNameDefault = "";
-  if (cacheNameDefault.empty()) {
-    cacheNameDefault = std::filesystem::path(FILE_DEF_CONFIG).string();
+  if (!File::initialized) {
+    File::Init();
   }
 
   return cacheNameDefault.c_str();
@@ -75,14 +34,8 @@ const char* File::Default()
 
 const char* File::Config()
 {
-  static std::string cacheNameConfig = "";
-
-  if (cacheNameConfig.empty()) {
-    if (File::override) {
-      cacheNameConfig = File::Path().replace_extension(FILE_EXT_TOML).string();
-    } else {
-      cacheNameConfig = std::string(FILE_DEF_CONFIG);
-    }
+  if (!File::initialized) {
+    File::Init();
   }
 
   return cacheNameConfig.c_str();
@@ -90,14 +43,8 @@ const char* File::Config()
 
 const char* File::Vars()
 {
-  static std::string cacheNameVar = "";
-
-  if (cacheNameVar.empty()) {
-    if (File::override) {
-      cacheNameVar = File::Path().replace_extension(FILE_EXT_VARS).string();
-    } else {
-      cacheNameVar = std::string(FILE_DEF_VARS);
-    }
+  if (!File::initialized) {
+    File::Init();
   }
 
   return cacheNameVar.c_str();
@@ -105,14 +52,8 @@ const char* File::Vars()
 
 const char* File::Log()
 {
-  static std::string cacheNameLog = "";
-
-  if (cacheNameLog.empty()) {
-    if (File::override) {
-      cacheNameLog = File::Path().replace_extension(FILE_EXT_LOG).string();
-    } else {
-      cacheNameLog = std::string(FILE_DEF_LOG);
-    }
+  if (!File::initialized) {
+    File::Init();
   }
 
   return cacheNameLog.c_str();
@@ -120,14 +61,8 @@ const char* File::Log()
 
 const char* File::Battles()
 {
-  static std::string cacheNameBattles = "";
-
-  if (cacheNameBattles.empty()) {
-    if (File::override) {
-      cacheNameBattles = File::Path().replace_extension(FILE_EXT_JSON).string();
-    } else {
-      cacheNameBattles = std::string(FILE_DEF_BL);
-    }
+  if (!File::initialized) {
+    File::Init();
   }
 
   return cacheNameBattles.c_str();
@@ -135,22 +70,8 @@ const char* File::Battles()
 
 std::wstring File::Title()
 {
-  static std::wstring cacheNameTitle = L"";
-  if (cacheNameTitle.empty()) {
-
-#ifdef _WIN32
-    HWND         hwnd = Config::WindowHandle();
-    std::wstring title;
-    title.reserve(GetWindowTextLength(hwnd) + 1);
-    title.resize(title.capacity());
-    GetWindowTextW(hwnd, const_cast<WCHAR*>(title.c_str()), title.capacity());
-#else
-    std::wstring title = std::wstring(FILE_DEF_TITLE);
-#endif
-
-    if (File::override && !title.empty()) {
-      cacheNameTitle = L"[" + File::Path().filename().replace_extension().wstring() + L"] " + title;
-    }
+  if (!File::initialized) {
+    File::Init();
   }
 
   return cacheNameTitle;
@@ -180,7 +101,135 @@ std::string_view File::MakePath(std::string_view filename, bool create_dir, bool
 
 void File::Init()
 {
-  File::Path();
+  if (!File::initialized) {
+    File::override = false;
+
+    /*******************************
+     *
+     * Set the default config file name
+     *
+     *******************************/
+
+    cacheNameDefault = std::filesystem::path(FILE_DEF_CONFIG).string();
+
+    /*******************************
+     *
+     * Check for command line argument 
+     * override and set config path
+     *
+     *******************************/
+#if _WIN32
+    // Get the command line
+    LPCWSTR cmdLine = GetCommandLineW();
+
+    // Parse command line into individual arguments
+    int     argc;
+    LPWSTR* argv = CommandLineToArgvW(cmdLine, &argc);
+
+    // If we have some arguments, lets see what we got
+    std::wstring argValue;
+    if (argv != nullptr) {
+      // Output the arguments (for example purposes, we'll just print them)
+      for (int i = 0; i < argc - 1; ++i) {
+        if (std::wstring(argv[i]) == L"-debug") {
+          File::debug = true;
+        }
+
+        if (std::wstring(argv[i]) == L"-trace") {
+          File::trace = true;
+        }
+
+        if (std::wstring(argv[i]) == L"-ccm" && i + 1 < argc) {
+          // Found "-ccm", so take the next argument as the value
+          argValue = argv[i + 1];
+          break;
+        }
+      }
+
+      if (!argValue.empty()) {
+        File::override = true;
+        configPath     = std::filesystem::path(ConvertWStringToString(argValue));
+      }
+
+      // Clean up
+      LocalFree(argv);
+    }
+#endif
+
+    // Second check here is because on windows, it may still be
+    // unset at this point.  On the mac, we do not currently
+    // support multiple configuration files
+    if (configPath.empty()) {
+      File::override = false;
+      configPath     = std::filesystem::path(cacheNameDefault);
+    }
+
+    /*******************************
+     *
+     * Set the window title
+     *
+     *******************************/
+#ifdef _WIN32
+    HWND         hwnd = Config::WindowHandle();
+    std::wstring title;
+    title.reserve(GetWindowTextLength(hwnd) + 1);
+    title.resize(title.capacity());
+    GetWindowTextW(hwnd, const_cast<WCHAR*>(title.c_str()), title.capacity());
+#else
+    std::wstring title = std::wstring(FILE_DEF_TITLE);
+#endif
+
+    if (File::override && !title.empty()) {
+      cacheNameTitle = L"[" + configPath.filename().replace_extension().wstring() + L"] " + title;
+    }
+
+    /*******************************
+     *
+     * Set the battle log file name
+     *
+     *******************************/
+    if (File::override) {
+      cacheNameBattles = configPath.replace_extension(FILE_EXT_JSON).string();
+    } else {
+      cacheNameBattles = std::string(FILE_DEF_BL);
+    }
+
+    /*******************************
+     *
+     * Set the log file name
+     *
+     *******************************/
+    if (File::override) {
+      cacheNameLog = configPath.replace_extension(FILE_EXT_LOG).string();
+    } else {
+      cacheNameLog = std::string(FILE_DEF_LOG);
+    }
+
+    /*******************************
+     *
+     * Set the vars file name
+     *
+     *******************************/
+
+    if (File::override) {
+      cacheNameVar = configPath.replace_extension(FILE_EXT_VARS).string();
+    } else {
+      cacheNameVar = std::string(FILE_DEF_VARS);
+    }
+
+    /*******************************
+     *
+     * Set the config file name
+     *
+     *******************************/
+    if (File::override) {
+      cacheNameConfig = configPath.replace_extension(FILE_EXT_TOML).string();
+    } else {
+      cacheNameConfig = std::string(FILE_DEF_CONFIG);
+    }
+
+    File::initialized = true;
+  }
 }
 
 bool File::hasCustomNames()
@@ -188,4 +237,32 @@ bool File::hasCustomNames()
   return File::override;
 }
 
-bool File::override = false;
+bool File::hasDebug()
+{
+  return File::debug;
+}
+
+bool File::hasTrace()
+{
+  return File::trace;
+}
+
+#ifdef _MODDBG
+bool File::debug = true;
+#else
+bool File::debug = false;
+#endif
+
+bool File::trace       = false;
+bool File::override    = false;
+bool File::initialized = false;
+
+std::wstring File::cacheNameTitle = L"";
+
+std::string File::cacheNameBattles = "";
+std::string File::cacheNameLog     = "";
+std::string File::cacheNameVar     = "";
+std::string File::cacheNameConfig  = "";
+std::string File::cacheNameDefault = "";
+
+std::filesystem::path File::configPath = "";

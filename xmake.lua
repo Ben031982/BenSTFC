@@ -1,6 +1,6 @@
 set_project("stfc-community-patch")
 
-set_languages("c++20")
+set_languages("c++23")
 
 set_runtimes("MT") -- Set the default build to multi-threaded static
 
@@ -8,8 +8,9 @@ add_requires("eastl")
 add_requires("spdlog")
 add_requires("toml++")
 add_requires("nlohmann_json")
-add_requires("libcurl", { configs = { zlib = true } })
-add_requires("protobuf 31.1")
+add_requires("cpr")
+add_requireconfs("cpr.libcurl", { configs = { zlib = true } })
+add_requires("protobuf 32.1")
 
 if is_plat("windows") then
     includes("win-proxy-dll")
@@ -18,10 +19,9 @@ if is_plat("windows") then
 end
 
 if is_plat("macosx") then
-    add_requires("7z")
     add_requires("inifile-cpp")
     add_requires("librsync")
-    add_requires("lzma")
+    add_requires("PLzmaSDK")
     includes("macos-dylib")
     includes("macos-loader")
     includes("macos-launcher")

@@ -47,6 +47,8 @@ public:
   static const char*  Log();
   static const char*  Battles();
   static bool         hasCustomNames();
+  static bool         hasDebug();
+  static bool         hasTrace();
 
 #if _WIN32
   static std::string_view MakePath(std::string_view filename, bool create_dir = false, bool old_path = false);
@@ -57,5 +59,17 @@ public:
 private:
   static std::filesystem::path Path();
 
+  static bool debug;
+  static bool trace;
   static bool override;
+  static bool initialized;
+
+  static std::wstring cacheNameTitle;
+  static std::string  cacheNameBattles;
+  static std::string  cacheNameLog;
+  static std::string  cacheNameVar;
+  static std::string  cacheNameConfig;
+  static std::string  cacheNameDefault;
+
+  static std::filesystem::path configPath;
 };
