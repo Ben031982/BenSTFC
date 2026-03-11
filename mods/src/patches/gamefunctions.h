@@ -45,6 +45,7 @@ enum GameFunction {
   ShowChatSide1,
   ShowChatSide2,
   ShowEvents,
+  ShowSettings,
   ZoomPreset1,
   ZoomPreset2,
   ZoomPreset3,
@@ -86,6 +87,9 @@ enum GameFunction {
   LogLevelDebug,
   LogLevelInfo,
   LogLevelTrace,
+  LogLevelError,
+  LogLevelWarn,
+  LogLevelOff,
   Quit,
 
   // Automatic max value

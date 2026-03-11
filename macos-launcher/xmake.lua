@@ -1,5 +1,24 @@
 add_rules("mode.debug", "mode.release")
 
+-- Function to extract version from version.h
+function get_version_from_header()
+    local version_file = path.join(os.scriptdir(), "../mods/src/version.h")
+    if not os.isfile(version_file) then
+        return "1.0.0.0"
+    end
+    
+    local content = io.readfile(version_file)
+    local major = content:match("#define VERSION_MAJOR%s+(%d+)")
+    local minor = content:match("#define VERSION_MINOR%s+(%d+)")
+    local revision = content:match("#define VERSION_REVISION%s+(%d+)")
+    local patch = content:match("#define VERSION_PATCH%s+(%d+)")
+    
+    if major and minor and revision and patch then
+        return major .. "." .. minor .. "." .. revision .. "." .. patch
+    end
+    return "1.0.0.0"
+end
+
 target("macOSLauncher")
     add_rules("xcode.application")
     set_kind("binary")

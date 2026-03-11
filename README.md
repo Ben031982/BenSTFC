@@ -1,5 +1,12 @@
 # Star Trek Fleet Command - Community Mod
 
+## IMPORTANT NOTE:
+
+We have finally released v1.0.0 of the mod, which replaces the previous 0.6.0 version (previously known as Rippers mod).  All previous full releases
+will fail to work wtih the latest STFC game client.  If you have issues, please check with our discord team and ensure that you have the latest 
+release installed.
+
+## BACK TO THE REGULAR STUFF:
 <p align="center">
     <img src="https://repository-images.githubusercontent.com/693298224/6a87716f-3dbb-48a5-80e0-709e0a1ad133" alt="STFC Community Mod">
     <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPLv3">  

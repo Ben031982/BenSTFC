@@ -7,11 +7,11 @@ ARCH=arm64
 
 xmake clean
 # Build the arm64 version
-xmake f -y -p macosx -a "arm64" -m $CONFIG
+xmake f -y -p macosx -a "arm64" -m $CONFIG --target_minver=13.5
 xmake
 
 # Build the x86_64 version
-xmake f -y -p macosx -a "x86_64" -m $CONFIG
+xmake f -y -p macosx -a "x86_64" -m $CONFIG --target_minver=13.5
 xmake
 
 rm build/macosx/$ARCH/$CONFIG/libmods.a || true

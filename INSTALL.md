@@ -75,7 +75,7 @@ Installation of the Community Mod is a manual process for Windows (or Wine).
    be saved to the game folder with the name `community_patch_settings.toml`. This
    sample file contains additional comments that explain the available settings.
 
-## Installation on macOS
+## Installation on macOS - macOS 13.5 or later required
 
 __NOTE:__ The `Star Trek Fleet Command` game itself is located at:
 

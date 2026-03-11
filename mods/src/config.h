@@ -158,7 +158,7 @@ public:
   float system_zoom_preset_5;
   float transition_time;
 
-  bool             borderless_fullscreen_f11;
+  bool             borderless_fullscreen;
   std::vector<int> disabled_banner_types;
 
   int  extend_donation_max;

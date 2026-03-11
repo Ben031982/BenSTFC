@@ -9,6 +9,7 @@
 
 #include "prime/AspectRatioConstraintHandler.h"
 #include "prime/IList.h"
+#include "windowtitle.h"
 
 static bool            WndProcInstalled  = false;
 static LONG_PTR        oWndProc          = NULL;
@@ -81,7 +82,7 @@ LONG                      SetWindowLongW_Hook(_In_ HWND hWnd, _In_ int nIndex, _
       }
 
       if (!WndProcInstalled) {
-        if (Config::Get().borderless_fullscreen_f11) {
+        if (Config::Get().borderless_fullscreen) {
           oWndProc         = SetWindowLongPtr(hWnd, GWLP_WNDPROC, (LONG_PTR)WndProc);
           WndProcInstalled = true;
         }
@@ -138,10 +139,9 @@ void AspectRatioConstraintHandler_Update(auto original, void* _this)
 
 #if _WIN32
   if (set_title) {
-    HWND hwnd  = Config::WindowHandle();
     auto title = File::Title();
-    if (hwnd != nullptr && !title.empty()) {
-      if (SetWindowTextW(hwnd, title.c_str())) {
+    if (!title.empty()) {
+      if (WindowTitle::Set(title)) {
         set_title = false;
       }
     }

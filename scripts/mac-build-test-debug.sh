@@ -146,7 +146,7 @@ configure_project() {
     
     cd "$PROJECT_ROOT"
     
-    local xmake_opts="-y -p macosx -a ${ARCH} -m ${BUILD_MODE}"
+    local xmake_opts="-y -p macosx -a ${ARCH} -m ${BUILD_MODE} --target_minver=13.5"
     if [[ "$VERBOSE" == true ]]; then
         xmake_opts="${xmake_opts} -v"
     fi
