@@ -34,6 +34,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <mutex>
@@ -76,8 +77,8 @@ namespace headers
   static std::string    instanceSessionId;
   static int32_t        instanceId;
   static std::string    unityVersion{"6000.0.52f1"};
-  static std::string    primeVersion{"1.000.45324"};
-  static std::string    poweredBy{"stfc community patch/" VER_FILE_VERSION_STR};
+  static std::string    primeVersion{"1.000.48084"};
+  static std::string    poweredBy{"stfc community mod/" VER_FILE_VERSION_STR};
 } // namespace headers
 
 [[nodiscard]] static std::string newUUID()
@@ -320,7 +321,7 @@ static std::shared_ptr<TargetWorker> get_curl_client_sync(const std::string& tar
   const auto& target_config = Config::Get().sync_targets[target];
 
   worker->session->SetUrl(target_config.url);
-  worker->session->SetUserAgent("stfc community patch " VER_FILE_VERSION_STR " (libcurl/" LIBCURL_VERSION ")");
+  worker->session->SetUserAgent("stfc community mod " VER_FILE_VERSION_STR " (libcurl/" LIBCURL_VERSION ")");
   worker->session->SetAcceptEncoding(cpr::AcceptEncoding{});
   worker->session->SetHttpVersion(cpr::HttpVersion{cpr::HttpVersionCode::VERSION_1_1});
   worker->session->SetRedirect(cpr::Redirect{3, true, false, cpr::PostRedirectFlags::POST_ALL});
@@ -666,7 +667,8 @@ static void load_previously_sent_logs()
   previously_sent_battlelogs.set_capacity(300);
 
   try {
-    std::ifstream file(File::Battles(), std::ios::in | std::ios::binary);
+    const std::filesystem::path path(File::MakePath(File::Battles()));
+    std::ifstream              file(path, std::ios::in | std::ios::binary);
     if (!file.is_open()) {
       spdlog::warn("Failed to open battles file (not found or not readable); starting with empty cache");
       return;
@@ -698,7 +700,8 @@ static void save_previously_sent_logs()
   }
 
   try {
-    std::ofstream file(File::Battles(), std::ios::out | std::ios::binary | std::ios::trunc);
+    const std::filesystem::path path(File::MakePath(File::Battles(), true));
+    std::ofstream               file(path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
       spdlog::error("Failed to open battles file for writing");
       return;
@@ -2023,41 +2026,47 @@ void DataContainer_ParseEntitySlotsData(auto original, void* _this, EntityGroup*
   return original(_this, group);
 }
 
-void DataContainer_ParseRtcPayload(auto original, void* _this, bool incrementalJsonParsing, RealtimeDataPayload* data)
+void DataContainer_ParseSlotData(auto original, void* _this, void* entity_slot, Il2CppString* channel_id)
 {
-  original(_this, incrementalJsonParsing, data);
-
-  if (data == nullptr || data->Target == nullptr || data->DataType == nullptr || data->Data == nullptr) {
-    return;
-  }
-
-  const auto target = to_string(data->Target);
-  if (target != "slot:assign" && target != "slot:clear") {
-    return;
-  }
-
-  const auto type_string = to_string(data->DataType);
-  if (std::stoi(type_string) != DataType::JSON) {
-    return;
-  }
-
-  const auto rtcData = to_string(data->Data);
-  auto payload = std::make_unique<std::string>(rtcData);
-
-  std::thread([p = std::move(payload)]() mutable {
-    try {
-      process_entity_slots_rtc(std::move(p));
-    } catch (const std::exception& e) {
-      spdlog::error("Exception in ParseRtcPayload: {}", e.what());
-    } catch (...) {
-      spdlog::error("Unknown exception in ParseRtcPayload");
-    }
-  }).detach();
+  // TODO: figure out what is in this entity_slot struct.
+  return original(_this, entity_slot, channel_id);
 }
 
-void GameServerModelRegistry_ProcessResultInternal(auto original, void* _this, HttpResponse* http_response,
-                                                   ServiceResponse* service_response, void* callback,
-                                                   void* callback_error)
+// This is unused after sync changes in v48084
+// void DataContainer_ParseRtcPayload(auto original, void* _this, bool incrementalJsonParsing, RealtimeDataPayload* data)
+// {
+//   original(_this, incrementalJsonParsing, data);
+
+//   if (data == nullptr || data->Target == nullptr || data->DataType == nullptr || data->Data == nullptr) {
+//     return;
+//   }
+
+//   const auto target = to_string(data->Target);
+//   if (target != "slot:assign" && target != "slot:clear") {
+//     return;
+//   }
+
+//   const auto type_string = to_string(data->DataType);
+//   if (std::stoi(type_string) != DataType::JSON) {
+//     return;
+//   }
+
+//   const auto rtcData = to_string(data->Data);
+//   auto payload = std::make_unique<std::string>(rtcData);
+
+//   std::thread([p = std::move(payload)]() mutable {
+//     try {
+//       process_entity_slots_rtc(std::move(p));
+//     } catch (const std::exception& e) {
+//       spdlog::error("Exception in ParseRtcPayload: {}", e.what());
+//     } catch (...) {
+//       spdlog::error("Unknown exception in ParseRtcPayload");
+//     }
+//   }).detach();
+// }
+
+void GameServerModelRegistry_ProcessResultInternal(auto original, void* _this, void* parsing_context,
+                                                   ServiceResponse* service_response, MethodInfo* method)
 {
   auto *const entity_groups = service_response->EntityGroups;
   for (int i = 0; i < entity_groups->Count; ++i) {
@@ -2065,10 +2074,11 @@ void GameServerModelRegistry_ProcessResultInternal(auto original, void* _this, H
     HandleEntityGroup(entity_group);
   }
 
-  return original(_this, http_response, service_response, callback, callback_error);
+  return original(_this, parsing_context, service_response, method);
 }
 
-void GameServerModelRegistry_HandleBinaryObjects(auto original, void* _this, ServiceResponse* service_response)
+void GameServerModelRegistry_ParseBinaryObjectsHelper(auto original, void* _this, void* parsing_context,
+                                                       ServiceResponse* service_response, MethodInfo* method)
 {
   auto *const entity_groups = service_response->EntityGroups;
   for (int i = 0; i < entity_groups->Count; ++i) {
@@ -2076,7 +2086,7 @@ void GameServerModelRegistry_HandleBinaryObjects(auto original, void* _this, Ser
     HandleEntityGroup(entity_group);
   }
 
-  return original(_this, service_response);
+  return original(_this, parsing_context, service_response, method);
 }
 
 void PrimeApp_InitPrimeServer(auto original, void* _this, Il2CppString* gameServerUrl, Il2CppString* gatewayServerUrl,
@@ -2111,30 +2121,31 @@ void InstallSyncPatches()
   } else {
     auto *ptr = game_server_model_registry.GetMethod("ProcessResultInternal");
     if (ptr == nullptr) {
-      ErrorMsg::MissingMethod("GameServerModelRegistry", "ProcessResultInterval");
+      ErrorMsg::MissingMethod("GameServerModelRegistry", "ProcessResultInternal");
     } else {
       SPUD_STATIC_DETOUR(ptr, GameServerModelRegistry_ProcessResultInternal);
     }
 
-    ptr = game_server_model_registry.GetMethod("HandleBinaryObjects");
+    ptr = game_server_model_registry.GetMethod("ParseBinaryObjectsHelper");
     if (ptr == nullptr) {
-      ErrorMsg::MissingMethod("GameServerModelRegistry", "HandleBinaryObjects");
+      ErrorMsg::MissingMethod("GameServerModelRegistry", "ParseBinaryObjectsHelper");
     } else {
-      SPUD_STATIC_DETOUR(ptr, GameServerModelRegistry_HandleBinaryObjects);
+      SPUD_STATIC_DETOUR(ptr, GameServerModelRegistry_ParseBinaryObjectsHelper);
     }
   }
-
+#if 0
   if (auto platform_model_registry =
           il2cpp_get_class_helper("Digit.Client.PrimeLib.Runtime", "Digit.PrimePlatform.Core", "PlatformModelRegistry");
       !platform_model_registry.isValidHelper()) {
     ErrorMsg::MissingHelper("Core", "PlatformModelRegistry");
   } else {
     if (auto *const ptr = platform_model_registry.GetMethod("ProcessResultInternal"); ptr == nullptr) {
-      ErrorMsg::MissingMethod("PlatformModelRegistry", "ProcessResultInterval");
+      ErrorMsg::MissingMethod("PlatformModelRegistry", "ProcessResultInternal");
     } else {
       SPUD_STATIC_DETOUR(ptr, GameServerModelRegistry_ProcessResultInternal);
     }
   }
+#endif
 
   if (auto buff_data_container =
           il2cpp_get_class_helper("Digit.Client.PrimeLib.Runtime", "Digit.PrimeServer.Services", "BuffDataContainer");
@@ -2249,16 +2260,18 @@ void InstallSyncPatches()
       SPUD_STATIC_DETOUR(ptr, DataContainer_ParseEntitySlotsData);
     }
 
-    if (auto *const ptr = slot_data_container.GetMethod("ParseSlotUpdatedJson"); ptr == nullptr) {
-      ErrorMsg::MissingMethod("SlotDataContainer", "ParseSlotUpdatedJson");
+    // v48084: ParseSlotUpdatedJson/ParseSlotRemovedJson renamed to UpdateSlotData/RemoveSlotData
+    // with new signature (EntitySlot, String channelId) — hook needs rewrite to match.
+    if (auto *const ptr = slot_data_container.GetMethod("UpdateSlotData"); ptr == nullptr) {
+      ErrorMsg::MissingMethod("SlotDataContainer", "UpdateSlotData");
     } else {
-      SPUD_STATIC_DETOUR(ptr, DataContainer_ParseRtcPayload);
+      SPUD_STATIC_DETOUR(ptr, DataContainer_ParseSlotData);
     }
 
-    if (auto *const ptr = slot_data_container.GetMethod("ParseSlotRemovedJson"); ptr == nullptr) {
-      ErrorMsg::MissingMethod("SlotDataContainer", "ParseSlotRemovedJson");
+    if (auto *const ptr = slot_data_container.GetMethod("RemoveSlotData"); ptr == nullptr) {
+      ErrorMsg::MissingMethod("SlotDataContainer", "RemoveSlotData");
     } else {
-      SPUD_STATIC_DETOUR(ptr, DataContainer_ParseRtcPayload);
+      SPUD_STATIC_DETOUR(ptr, DataContainer_ParseSlotData);
     }
   }
 

@@ -510,7 +510,7 @@ void Config::Load()
   this->installTestPatches                = true;
   this->installMiscPatches                = true;
   this->installChatPatches                = true;
-  this->installResolutionListFix          = true;
+  this->installResolutionListFix          = false; // this patch does not work after unity 6 update
   this->installSyncPatches                = true;
   this->installObjectTracker              = true;
 #endif

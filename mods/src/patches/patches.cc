@@ -64,7 +64,7 @@ __int64 il2cpp_init_hook(auto original, const char* domain_name)
   spdlog::set_level(log_level);
   spdlog::flush_on(log_level);
 
-  spdlog::info("Initializing STFC Community Patch ({})", VER_PRODUCT_VERSION_STR);
+  spdlog::info("Initializing STFC Community Mod ({})", VER_PRODUCT_VERSION_STR);
   spdlog::info("");
   if (File::hasCustomNames()) {
     spdlog::info("Using custom names");
