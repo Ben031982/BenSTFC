@@ -138,7 +138,7 @@ esac
 BUILD_DIR="${PROJECT_ROOT}/build/macosx/${ARCH}/${BUILD_MODE}"
 APP_PATH="${BUILD_DIR}/macOSLauncher.app"
 LOADER_PATH="${BUILD_DIR}/stfc-community-mod-loader"
-STFC_APP_PATH="${BUILD_DIR}/STFC Community Mod.app"
+PACKAGED_APP_PATH="${BUILD_DIR}/STFC Community Mod.app"
 
 # Configure the project
 configure_project() {
@@ -188,6 +188,61 @@ build_project() {
         print_info "Built files:"
         ls -lh "${BUILD_DIR}" | grep -E '\.(app|dylib)$' || true
     fi
+
+    package_app_bundle
+}
+
+# Package the launcher bundle the same way CI does, but keep xmake's
+# macOSLauncher.app in place so local incremental builds still work.
+package_app_bundle() {
+    print_info "Packaging launcher application bundle..."
+
+    if [[ ! -d "$APP_PATH" ]]; then
+        print_error "Launcher app not found at: $APP_PATH"
+        print_info "Make sure the launcher was built successfully"
+        exit 1
+    fi
+
+    if [[ ! -f "$LOADER_PATH" ]]; then
+        print_error "Loader not found at: $LOADER_PATH"
+        print_info "Make sure the loader was built successfully"
+        exit 1
+    fi
+
+    local dylib_path="${BUILD_DIR}/libstfc-community-mod.dylib"
+    if [[ ! -f "$dylib_path" ]]; then
+        print_error "Mod library not found at: $dylib_path"
+        print_info "Make sure the mod library was built successfully"
+        exit 1
+    fi
+
+    local icon_path="${PROJECT_ROOT}/assets/launcher.icns"
+    if [[ ! -f "$icon_path" ]]; then
+        print_error "Launcher icon not found at: $icon_path"
+        exit 1
+    fi
+
+    local info_plist_path="${PROJECT_ROOT}/macos-launcher/src/Info.plist"
+    if [[ ! -f "$info_plist_path" ]]; then
+        print_error "Generated Info.plist not found at: $info_plist_path"
+        print_info "Run the configure/build step so xmake can generate it from Info.plist.template"
+        exit 1
+    fi
+
+    rm -rf "$PACKAGED_APP_PATH"
+    ditto "$APP_PATH" "$PACKAGED_APP_PATH"
+
+    mkdir -p "${PACKAGED_APP_PATH}/Contents/Resources"
+    cp "$LOADER_PATH" "${PACKAGED_APP_PATH}/Contents/stfc-community-mod-loader"
+    cp "$dylib_path" "${PACKAGED_APP_PATH}/Contents/libstfc-community-mod.dylib"
+    cp "$icon_path" "${PACKAGED_APP_PATH}/Contents/Resources/"
+    cp "$info_plist_path" "${PACKAGED_APP_PATH}/Contents/"
+
+    print_info "Code signing packaged application..."
+    codesign --force --verify --verbose --deep --sign "-" "$PACKAGED_APP_PATH"
+    codesign --verify --deep --strict --verbose=2 "$PACKAGED_APP_PATH"
+
+    print_success "Packaged app prepared at: $PACKAGED_APP_PATH"
 }
 
 # Prepare the app bundle for running
@@ -196,23 +251,18 @@ prepare_app() {
         print_info "Preparing launcher application bundle..."
         
         # Check if app was built
-        if [[ ! -d "$APP_PATH" ]]; then
-            print_error "Launcher app not found at: $APP_PATH"
+        if [[ ! -d "$PACKAGED_APP_PATH" ]]; then
+            print_warning "Packaged app not found at: $PACKAGED_APP_PATH"
+            package_app_bundle
+        fi
+
+        if [[ ! -d "$PACKAGED_APP_PATH" ]]; then
+            print_error "Launcher app not found at: $PACKAGED_APP_PATH"
             print_info "Make sure the launcher was built successfully"
             exit 1
         fi
-        
-        # Copy icon if it exists
-        if [[ -f "${PROJECT_ROOT}/assets/launcher.icns" ]]; then
-            mkdir -p "${APP_PATH}/Contents/Resources"
-            cp "${PROJECT_ROOT}/assets/launcher.icns" "${APP_PATH}/Contents/Resources/"
-        fi
-        
-        # Sign the app (required for running on macOS)
-        print_info "Code signing launcher application..."
-        codesign --force --deep --sign "-" "$APP_PATH" 2>/dev/null || true
-        
-        print_success "Launcher prepared at: $APP_PATH"
+
+        print_success "Launcher prepared at: $PACKAGED_APP_PATH"
     else
         print_info "Preparing loader..."
         
@@ -242,7 +292,7 @@ run_app() {
     if [[ "$USE_LAUNCHER" == true ]]; then
         print_info "Launching application with launcher..."
         print_info "Crash dumps will be generated at: ~/Library/Logs/DiagnosticReports/"
-        open "$APP_PATH"
+        open "$PACKAGED_APP_PATH"
         
         print_success "Launcher launched"
         print_info "To view logs, use: log stream --predicate 'process == \"macOSLauncher\"' --level debug"
@@ -331,7 +381,7 @@ debug_app() {
     local exec_name
     
     if [[ "$USE_LAUNCHER" == true ]]; then
-        executable="${APP_PATH}/Contents/MacOS/macOSLauncher"
+        executable="${PACKAGED_APP_PATH}/Contents/MacOS/macOSLauncher"
         exec_name="Launcher"
     else
         executable="$LOADER_PATH"

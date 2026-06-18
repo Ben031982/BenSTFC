@@ -131,6 +131,7 @@ public:
   float ui_scale_adjust;
   float ui_scale_viewer;
   float zoom;
+  float fr_scale;
   bool  allow_cursor;
   bool  free_resize;
   bool  adjust_scale_res;
@@ -160,6 +161,7 @@ public:
 
   bool             borderless_fullscreen;
   std::vector<int> disabled_banner_types;
+  std::vector<int> notify_banner_types;
 
   int  extend_donation_max;
   bool extend_donation_slider;
@@ -205,4 +207,11 @@ public:
 
   std::string config_settings_url;
   std::string config_assets_url_override;
+
+  // Loading Screen Background
+  bool        loader_transition;
+  bool        loader_enabled;
+  std::string loader_image;
+
+  bool installLoadingScreenBgHooks;
 };

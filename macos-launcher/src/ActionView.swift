@@ -22,8 +22,10 @@ struct ActionView: View, XSollaUpdaterDelegate {
 
   func updateProgress(progress: XsollaUpdateProgress) {
     switch progress {
-    case .Start(_):
-      break
+    case .Start(let totalActions):
+      updateAction = "Updating"
+      updateSubAction = "Planning"
+      updateProgress = totalActions > 0 ? 0.0 : 1.0
     case .Progress(let currentAction, let totalActions):
       updateAction = "Updating \(currentAction) of \(totalActions)"
       updateProgress = Float(currentAction) / Float(totalActions)
@@ -51,9 +53,9 @@ struct ActionView: View, XSollaUpdaterDelegate {
       updateSubAction = "Waiting"
       break
     case .ApplyVersion:
-      break
+      updateSubAction = "Applying Version"
     case .VersionApplied:
-      break
+      updateSubAction = "Version Applied"
     case .Finalizing:
       updateSubAction = "Finalizing"
       break
@@ -62,6 +64,7 @@ struct ActionView: View, XSollaUpdaterDelegate {
       break
     case .Complete:
       updateSubAction = "Complete"
+      updateProgress = 1.0
       break
     }
   }
@@ -70,67 +73,69 @@ struct ActionView: View, XSollaUpdaterDelegate {
     GeometryReader { geo in
       Grid {
         GridRow {
+          Button {
+            withAnimation {
+              openSettings()
+            }
+          } label: {
+            commonButton(text: "Open Settings")
+              .foregroundColor(.lcarViolet)
+          }.buttonStyle(PlainButtonStyle())
+
           if gameInstalled {
-            Button {
-              withAnimation {
-                openSettings()
-              }
-            } label: {
-              commonButton(text: "Open Settings")
-                .foregroundColor(.lcarViolet)
-            }.buttonStyle(PlainButtonStyle())
-            Button {
-              withAnimation {
-                if gameUpdateAvailable && !updating {
-                  Task {
-                    do {
-                      updating = true
-                      updateAction = "Starting"
-                      updateSubAction = "Planning"
-                      try await gameUpdater.updateGame(delegate: self)
-                    } catch {
-                      logger.error("Error updating game: \(error.localizedDescription)")
+            Group {
+              Button {
+                withAnimation {
+                  if gameUpdateAvailable && !updating {
+                    Task {
+                      do {
+                        logger.info("User requested game update")
+                        updating = true
+                        updateAction = "Starting"
+                        updateSubAction = "Planning"
+                        try await gameUpdater.updateGame(delegate: self)
+                        logger.info("Game update finished successfully")
+                      } catch {
+                        logger.error("Error updating game: \(error.localizedDescription)")
+                        updateAction = "Update Failed"
+                        updateSubAction = "Failed"
+                        errorMessage = "Game update failed: \(error.localizedDescription)"
+                        showErrorAlert = true
+                      }
+                      updating = false
+                      gameVersion = gameUpdater.getInstalledGameVersion()
+                      gameUpdateAvailable = await gameUpdater.checkForGameUpdate()
                     }
-                    updating = false
-                    gameVersion = gameUpdater.getInstalledGameVersion()
-                    gameUpdateAvailable = await gameUpdater.checkForGameUpdate()
                   }
                 }
-              }
-            } label: {
-              if gameUpdateAvailable {
-                commonButton(text: "Update Game!")
-                  .foregroundColor(.lcarTan)
-              } else {
-                commonButton()
-                  .foregroundColor(.lcarTan)
-              }
-            }.buttonStyle(PlainButtonStyle())
-            Button {
-              withAnimation {
-                launchGame()
-              }
-            } label: {
-              commonButton(text: "Engage!")
-                .foregroundColor(.lcarOrange)
-            }.buttonStyle(PlainButtonStyle())
+              } label: {
+                if gameUpdateAvailable {
+                  commonButton(text: "Update Game!")
+                    .foregroundColor(.lcarTan)
+                } else {
+                  commonButton()
+                    .foregroundColor(.lcarTan)
+                }
+              }.buttonStyle(PlainButtonStyle())
+              Button {
+                withAnimation {
+                  launchGame()
+                }
+              } label: {
+                commonButton(text: "Engage!")
+                  .foregroundColor(.lcarOrange)
+              }.buttonStyle(PlainButtonStyle())
+            }
+            .opacity(updating || gameRunning ? 0.5 : 1.0)
+            .allowsHitTesting(!updating && !gameRunning)
           } else {
             Text("Game not installed")
               .font(.custom("HelveticaNeue-CondensedBold", size: 40))
               .foregroundColor(.lcarTan)
               .offset(x: -45)
-            //Button {
-            //  withAnimation {
-            //  }
-            //} label: {
-            //  commonButton(text: "Install Game!")
-            //    .foregroundColor(.lcarTan)
-            //}.buttonStyle(PlainButtonStyle())
           }
 
         }
-        .opacity(updating || gameRunning ? 0.5 : 1.0)
-        .allowsHitTesting(!updating && !gameRunning)
       }
       .frame(width: geo.size.width, height: 150)
       .offset(x: 85, y: 20)

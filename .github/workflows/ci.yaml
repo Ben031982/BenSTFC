@@ -70,6 +70,12 @@ jobs:
       - name: Build (x86)
         run: xmake -y
 
+      - name: Rebuild launcher assets
+        run: |
+          xmake f -p macosx -a "arm64" -m release -y --target_minver=13.5
+          xmake -r -y macOSLauncher
+          test -f build/macosx/arm64/release/macOSLauncher.app/Contents/Resources/Assets.car
+
       - name: Create App Bundle
         run: |
           lipo -create build/macosx/arm64/release/macOSLauncher build/macosx/x86_64/release/macOSLauncher -output build/macosx/arm64/release/macOSLauncher.app/Contents/MacOS/macOSLauncher
@@ -78,9 +84,22 @@ jobs:
           cp assets/launcher.icns build/macosx/arm64/release/macOSLauncher.app/Contents/Resources/
           cp macos-launcher/src/Info.plist build/macosx/arm64/release/macOSLauncher.app/Contents/
           mv build/macosx/arm64/release/macOSLauncher.app build/macosx/arm64/release/STFC\ Community\ Mod.app
+          test -f build/macosx/arm64/release/STFC\ Community\ Mod.app/Contents/Resources/Assets.car
 
       - name: Sign App Bundle
         run: codesign --force --verify --verbose --deep --sign "-" build/macosx/arm64/release/STFC\ Community\ Mod.app
+
+      - name: Package macOS mod archive
+        run: |
+          brew install zstd
+          mkdir -p stfc-community-mod-macos-universal
+          tar -cf - \
+            -C build/macosx/arm64/release/STFC\ Community\ Mod.app/Contents \
+            libstfc-community-mod.dylib \
+            | zstd -19 -T0 -o stfc-community-mod-macos-universal/stfc-community-mod-macos-universal.tar.zst
+          shasum -a 256 stfc-community-mod-macos-universal/stfc-community-mod-macos-universal.tar.zst \
+            | awk '{print $1}' \
+            > stfc-community-mod-macos-universal/stfc-community-mod-macos-universal.tar.zst.sha256
 
       - name: Install disk image creation tool
         run: brew install create-dmg
@@ -93,5 +112,13 @@ jobs:
         with:
           name: stfc-community-mod-installer
           path: stfc-community-mod-installer.dmg
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload macOS mod archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: stfc-community-mod-macos-universal
+          path: stfc-community-mod-macos-universal
           compression-level: 0
           if-no-files-found: error

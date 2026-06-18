@@ -47,6 +47,17 @@ jobs:
         run: |
           (cd stfc-community-mod && zip -r - .) > stfc-community-mod.zip
 
+      - name: Package Windows mod archive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd
+          mkdir -p stfc-community-mod-windows-x64
+          tar -cf - -C stfc-community-mod version.dll \
+            | zstd -19 -T0 -o stfc-community-mod-windows-x64/stfc-community-mod-windows-x64.tar.zst
+          sha256sum stfc-community-mod-windows-x64/stfc-community-mod-windows-x64.tar.zst \
+            | awk '{print $1}' \
+            > stfc-community-mod-windows-x64/stfc-community-mod-windows-x64.tar.zst.sha256
+
       # ✅ Step 4 — Detect prerelease (alpha/beta)
       - name: Check Prerelease
         id: check-prerelease
@@ -85,6 +96,46 @@ jobs:
           asset_path: ./stfc-community-mod.zip
           asset_name: stfc-community-mod-${{ github.ref_name }}.zip
           asset_content_type: application/zip
+
+      - name: Upload Community Mod - Windows Archive
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./stfc-community-mod-windows-x64/stfc-community-mod-windows-x64.tar.zst
+          asset_name: stfc-community-mod-windows-x64.tar.zst
+          asset_content_type: application/zstd
+
+      - name: Upload Community Mod - Windows Archive Checksum
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./stfc-community-mod-windows-x64/stfc-community-mod-windows-x64.tar.zst.sha256
+          asset_name: stfc-community-mod-windows-x64.tar.zst.sha256
+          asset_content_type: text/plain
+
+      - name: Upload Community Mod - macOS Archive
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./stfc-community-mod-macos-universal/stfc-community-mod-macos-universal.tar.zst
+          asset_name: stfc-community-mod-macos-universal.tar.zst
+          asset_content_type: application/zstd
+
+      - name: Upload Community Mod - macOS Archive Checksum
+        uses: shogo82148/actions-upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./stfc-community-mod-macos-universal/stfc-community-mod-macos-universal.tar.zst.sha256
+          asset_name: stfc-community-mod-macos-universal.tar.zst.sha256
+          asset_content_type: text/plain
 
       - name: Upload Community Mod - Mac Installer
         uses: shogo82148/actions-upload-release-asset@v1
