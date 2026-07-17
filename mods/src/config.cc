@@ -12,6 +12,7 @@
 #include "defaultconfig.h"
 #include <algorithm>
 #include <cstdio>
+#include <initializer_list>
 #include <iostream>
 #include <ranges>
 #include <string>
@@ -364,19 +365,79 @@ void read_sync_targets(toml::table& config, toml::table& new_config,
   }
 }
 
-void parse_config_shortcut(toml::table& config, toml::table& new_config, std::string_view item,
-                           GameFunction gameFunction, std::string_view default_value)
+struct ShortcutConfigValue {
+  std::string value;
+  std::string source_item;
+  bool        from_config = false;
+  bool        valid_type  = true;
+};
+
+std::string shortcut_source_label(const ShortcutConfigValue& shortcut_value, std::string_view item)
+{
+  if (!shortcut_value.valid_type) {
+    return "invalid";
+  }
+  if (!shortcut_value.from_config) {
+    return "default";
+  }
+  if (shortcut_value.source_item == item) {
+    return "config";
+  }
+
+  std::string label = "alias:";
+  label.append(shortcut_value.source_item);
+  return label;
+}
+
+void set_shortcut_source(toml::node_view<toml::node> sourceTable, std::string_view item, std::string_view source)
+{
+  sourceTable.as_table()->insert_or_assign(item, std::string(source));
+}
+
+void set_shortcut_noop(toml::node_view<toml::node> sectionTable, toml::node_view<toml::node> sourceTable,
+                       std::string_view item, std::string_view source)
+{
+  sectionTable.as_table()->insert_or_assign(item, "NONE");
+  set_shortcut_source(sourceTable, item, source);
+  spdlog::debug("shortcut value shortcuts.{} value: NONE", item);
+}
+
+void parse_config_shortcut_value(toml::table& new_config, std::string_view item, GameFunction gameFunction,
+                                 std::string_view default_value, const ShortcutConfigValue& shortcut_value)
 {
   auto section = "shortcuts";
+  auto source  = "shortcuts_source";
 
-  config.emplace<toml::table>(section, toml::table());
   new_config.emplace<toml::table>(section, toml::table());
+  new_config.emplace<toml::table>(source, toml::table());
 
   auto sectionTable = new_config[section];
-  auto config_value = config[section][item].value_or(default_value);
+  auto sourceTable  = new_config[source];
+  auto sourceLabel  = shortcut_source_label(shortcut_value, item);
 
+  if (!shortcut_value.valid_type) {
+    spdlog::error("Invalid shortcut value [shortcuts].{} must be a string; using default for [shortcuts].{}.",
+                  shortcut_value.source_item, item);
+    return parse_config_shortcut_value(new_config, item, gameFunction, default_value,
+                                       {std::string(default_value), std::string(item), false, true});
+  }
+
+  auto config_value = shortcut_value.value;
   auto valueTrimmed = StripTrailingAsciiWhitespace(config_value);
   auto valueLowered = AsciiStrToUpper(valueTrimmed);
+
+  if (valueLowered == "NONE") {
+    set_shortcut_noop(sectionTable, sourceTable, item, sourceLabel);
+    return;
+  }
+
+  if (valueTrimmed.empty()) {
+    spdlog::error("Empty shortcut value [shortcuts].{}; using default for [shortcuts].{}.", shortcut_value.source_item,
+                  item);
+    return parse_config_shortcut_value(new_config, item, gameFunction, default_value,
+                                       {std::string(default_value), std::string(item), false, true});
+  }
+
   auto wantedKeys   = StrSplit(valueLowered, '|');
 
   bool keyAdded = false;
@@ -385,20 +446,94 @@ void parse_config_shortcut(toml::table& config, toml::table& new_config, std::st
 
     if (mapKey.Key != KeyCode::None) {
       keyAdded = true;
+      MapKey::AddMappedKey(gameFunction, mapKey);
+    } else if (!wantedKey.empty()) {
+      spdlog::warn("Invalid shortcut token [shortcuts].{} token='{}' value='{}'; ignoring token.",
+                   shortcut_value.source_item, wantedKey, config_value);
     }
-
-    MapKey::AddMappedKey(gameFunction, mapKey);
   }
 
   if (!keyAdded) {
-    MapKey mapKey = MapKey::Parse(default_value);
-    MapKey::AddMappedKey(gameFunction, mapKey);
+    if (shortcut_value.from_config) {
+      spdlog::error("No valid shortcut tokens for [shortcuts].{} value='{}'; using default for [shortcuts].{}.",
+                    shortcut_value.source_item, config_value, item);
+      return parse_config_shortcut_value(new_config, item, gameFunction, default_value,
+                                         {std::string(default_value), std::string(item), false, true});
+    } else {
+      spdlog::error("Default shortcut [shortcuts].{} value='{}' has no valid tokens; action disabled.", item,
+                    config_value);
+    }
+    set_shortcut_noop(sectionTable, sourceTable, item, "invalid");
+    return;
   }
 
   auto shortcut = MapKey::GetShortcuts(gameFunction);
   sectionTable.as_table()->insert_or_assign(item, shortcut);
+  set_shortcut_source(sourceTable, item, sourceLabel);
 
   spdlog::debug("shortcut value {}.{} value: {}", section, item, shortcut);
+}
+
+bool shortcut_key_exists(toml::table& config, std::string_view item)
+{
+  auto shortcuts = config["shortcuts"].as_table();
+  return shortcuts && shortcuts->contains(item);
+}
+
+ShortcutConfigValue get_shortcut_value_or_default(toml::table& config, std::string_view item,
+                                                  std::string_view default_value)
+{
+  if (!shortcut_key_exists(config, item)) {
+    return {std::string(default_value), std::string(item), false, true};
+  }
+
+  auto value = config["shortcuts"][item].value<std::string>();
+  if (!value) {
+    return {"", std::string(item), true, false};
+  }
+
+  return {*value, std::string(item), true, true};
+}
+
+void parse_config_shortcut(toml::table& config, toml::table& new_config, std::string_view item,
+                           GameFunction gameFunction, std::string_view default_value)
+{
+  auto section = "shortcuts";
+
+  config.emplace<toml::table>(section, toml::table());
+
+  parse_config_shortcut_value(new_config, item, gameFunction, default_value,
+                              get_shortcut_value_or_default(config, item, default_value));
+}
+
+void parse_config_shortcut_aliases(toml::table& config, toml::table& new_config, std::string_view item,
+                                   GameFunction gameFunction, std::string_view default_value,
+                                   std::initializer_list<std::string_view> aliases)
+{
+  auto section = "shortcuts";
+
+  config.emplace<toml::table>(section, toml::table());
+
+  auto        config_value = get_shortcut_value_or_default(config, item, default_value);
+  const auto has_item     = shortcut_key_exists(config, item);
+
+  for (const auto alias : aliases) {
+    if (!shortcut_key_exists(config, alias)) {
+      continue;
+    }
+
+    if (has_item) {
+      spdlog::warn("Ignoring deprecated shortcut alias [shortcuts].{} because [shortcuts].{} is set.", alias, item);
+      continue;
+    }
+
+    config_value = get_shortcut_value_or_default(config, alias, default_value);
+    spdlog::warn("Deprecated shortcut alias [shortcuts].{} is supported for compatibility; use [shortcuts].{}.",
+                 alias, item);
+    break;
+  }
+
+  parse_config_shortcut_value(new_config, item, gameFunction, default_value, config_value);
 }
 
 void migrate_mac_config_if_needed(const char* filename)
@@ -484,7 +619,9 @@ void Config::Load()
     write_log    = false;
   }
 
-#if _MODDBG
+  // Patch switches are honoured in release builds too (previously debug-only):
+  // needed to selectively disable hook groups that collide with BepInEx plugins
+  // hooking the same il2cpp methods (native + managed detour on one prologue crashes).
   this->installUiScaleHooks =
       get_config_or_default(config, parsed, "patches", "uiscalehooks", DCP::uiscalehooks, write_config);
   this->installZoomHooks = get_config_or_default(config, parsed, "patches", "zoomhooks", DCP::zoomhooks, write_config);
@@ -493,8 +630,6 @@ void Config::Load()
   this->installToastBannerHooks =
       get_config_or_default(config, parsed, "patches", "toastbannerhooks", DCP::toastbannerhooks, write_config);
   this->installPanHooks = get_config_or_default(config, parsed, "patches", "panhooks", DCP::panhooks, write_config);
-  this->installImproveResponsivenessHooks = get_config_or_default(
-      config, parsed, "patches", "improveresponsivenesshooks", DCP::improveresponsivenesshooks, write_config);
   this->installHotkeyHooks =
       get_config_or_default(config, parsed, "patches", "hotkeyhooks", DCP::hotkeyhooks, write_config);
   this->installFreeResizeHooks =
@@ -511,29 +646,19 @@ void Config::Load()
       get_config_or_default(config, parsed, "patches", "resolutionlistfix", DCP::resolutionlistfix, write_config);
   this->installSyncPatches =
       get_config_or_default(config, parsed, "patches", "syncpatches", DCP::syncpatches, write_config);
+  this->installGameVersionHook =
+      get_config_or_default(config, parsed, "patches", "game_version", DCP::game_version, write_config);
   this->installObjectTracker =
       get_config_or_default(config, parsed, "patches", "objecttracker", DCP::objecttracker, write_config);
-  this->installLoadingScreenBgHooks =
-      get_config_or_default(config, parsed, "patches", "loadingscreenbghooks", DCP::loadingscreenbghooks, write_config);
+  this->installLoadingScreenHooks =
+      get_config_or_default(config, parsed, "patches", "loadingscreenhooks", DCP::loadingscreenhooks, write_config);
+  this->installTransitionScreenHooks =
+      get_config_or_default(config, parsed, "patches", "transitionscreenhooks", DCP::transitionscreenhooks, write_config);
+  this->installGiftsBulkClaimHooks =
+      get_config_or_default(config, parsed, "patches", "giftsbulkclaimhooks", DCP::giftsbulkclaimhooks, write_config);
+  this->installFocusSearchHooks =
+      get_config_or_default(config, parsed, "patches", "focussearch", DCP::focussearch, write_config);
   spdlog::debug("");
-#else
-  this->installUiScaleHooks               = true;
-  this->installZoomHooks                  = true;
-  this->installBuffFixHooks               = true;
-  this->installToastBannerHooks           = true;
-  this->installPanHooks                   = true;
-  this->installImproveResponsivenessHooks = true;
-  this->installHotkeyHooks                = true;
-  this->installFreeResizeHooks            = true;
-  this->installTempCrashFixes             = true;
-  this->installTestPatches                = true;
-  this->installMiscPatches                = true;
-  this->installChatPatches                = true;
-  this->installResolutionListFix          = false; // this patch does not work after unity 6 update
-  this->installSyncPatches                = true;
-  this->installObjectTracker              = true;
-  this->installLoadingScreenBgHooks       = true;
-#endif
 
   this->queue_enabled =
       get_config_or_default(config, parsed, "control", "queue_enabled", DCC::queue_enabled, write_config);
@@ -615,6 +740,8 @@ void Config::Load()
       get_config_or_default(config, parsed, "ui", "disable_move_keys", DCU::disable_move_keys, write_config);
   this->disable_toast_banners =
       get_config_or_default(config, parsed, "ui", "disable_toast_banners", DCU::disable_toast_banners, write_config);
+  this->auto_open_bulk_claim_flyout = get_config_or_default(config, parsed, "ui", "auto_open_bulk_claim_flyout",
+                                                            DCU::auto_open_bulk_claim_flyout, write_config);
 
 #if _WIN32
   this->extend_donation_slider =
@@ -719,13 +846,25 @@ void Config::Load()
   this->config_assets_url_override = get_config_or_default<std::string>(config, parsed, "config", "assets_url_override",
                                                                         DCSC::assets_url_override, write_log);
 
-  // Loading Screen Background settings
-  this->loader_transition =
-      get_config_or_default(config, parsed, "graphics", "loader_transition", DCG::loader_transition, write_log);
+  // Loading Screen / Transition Screen settings
   this->loader_enabled =
       get_config_or_default(config, parsed, "graphics", "loader_enabled", DCG::loader_enabled, write_log);
+  this->loader_transition =
+      get_config_or_default(config, parsed, "graphics", "loader_transition", DCG::loader_transition, write_log);
+  this->loader_transition_black =
+      get_config_or_default(config, parsed, "graphics", "loader_transition_black", DCG::loader_transition_black, write_log);
+  // If transition customization is disabled, force black mode (game's default background)
+  if (!this->loader_transition)
+    this->loader_transition_black = true;
+#ifdef _USE_ORIGINAL_BG
+  this->loader_transition_black = true;
+#endif
   this->loader_image =
       get_config_or_default<std::string>(config, parsed, "graphics", "loader_image", DCG::loader_image, write_log);
+  this->loader_logo_scale =
+      get_config_or_default(config, parsed, "graphics", "loader_logo_scale", DCG::loader_logo_scale, write_log);
+  this->loader_tip_enabled =
+      get_config_or_default(config, parsed, "graphics", "loader_tip_enabled", DCG::loader_tip_enabled, write_log);
 
   std::vector<std::string> types = StrSplit(disabled_banner_types_str, ',');
 
@@ -787,15 +926,13 @@ void Config::Load()
 
   spdlog::debug("");
 
-  // if (this->enable_experimental) {
-  //   parse_config_shortcut(config, parsed, "move_left",  GameFunction::MoveLeft,  DCSH::move_left);
-  //   parse_config_shortcut(config, parsed, "move_right", GameFunction::MoveRight, DCSH::move_right);
-  //   parse_config_shortcut(config, parsed, "move_down",  GameFunction::MoveDown,  DCSH::move_down);
-  //   parse_config_shortcut(config, parsed, "move_up",    GameFunction::MoveUp,    DCSH::move_up);
-  // }
+  parse_config_shortcut(config, parsed, "move_left",  GameFunction::MoveLeft,  DCSH::move_left);
+  parse_config_shortcut(config, parsed, "move_right", GameFunction::MoveRight, DCSH::move_right);
 
-  parse_config_shortcut(config, parsed, "set_hotkeys_disble", GameFunction::DisableHotKeys, DCSH::set_hotkeys_disabled);
-  parse_config_shortcut(config, parsed, "set_hotkeys_enable", GameFunction::EnableHotKeys, DCSH::set_hotkeys_enabled);
+  parse_config_shortcut_aliases(config, parsed, "set_hotkeys_disabled", GameFunction::DisableHotKeys,
+                                DCSH::set_hotkeys_disabled, {"set_hotkeys_disble", "set_hotkeys_disable"});
+  parse_config_shortcut_aliases(config, parsed, "set_hotkeys_enabled", GameFunction::EnableHotKeys,
+                                DCSH::set_hotkeys_enabled, {"set_hotkeys_enable"});
 
   parse_config_shortcut(config, parsed, "select_chatalliance", GameFunction::SelectChatAlliance,
                         DCSH::select_chatalliance);
@@ -813,6 +950,7 @@ void Config::Load()
   parse_config_shortcut(config, parsed, "select_ship7", GameFunction::SelectShip7, DCSH::select_ship7);
   parse_config_shortcut(config, parsed, "select_ship8", GameFunction::SelectShip8, DCSH::select_ship8);
   parse_config_shortcut(config, parsed, "select_current", GameFunction::SelectCurrent, DCSH::select_current);
+  parse_config_shortcut(config, parsed, "focus_search", GameFunction::FocusSearch, DCSH::focus_search);
 
   parse_config_shortcut(config, parsed, "action_primary", GameFunction::ActionPrimary, DCSH::action_primary);
   parse_config_shortcut(config, parsed, "action_secondary", GameFunction::ActionSecondary, DCSH::action_secondary);

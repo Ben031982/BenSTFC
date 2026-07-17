@@ -95,6 +95,10 @@ do
         add_defines("_MODDBG")  -- enable your debug flag
     end
 
+    if get_config("use_original_bg") then
+        add_defines("_USE_ORIGINAL_BG")
+    end
+
     -- Platform-specific settings
     if is_plat("windows") then
         add_cxflags("/bigobj")
@@ -107,5 +111,5 @@ do
         add_frameworks("Cocoa")
     end
 
-    set_policy("build.optimization.lto", false)
+    set_policy("build.optimization.lto", true)
 end

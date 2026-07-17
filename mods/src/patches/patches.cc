@@ -26,8 +26,8 @@ void InstallFreeResizeHooks();
 #endif
 void InstallToastBannerHooks();
 void InstallPanHooks();
-void InstallImproveResponsivenessHooks();
 void InstallHotkeyHooks();
+void InstallGiftsBulkClaimHooks();
 
 void InstallTestPatches();
 void InstallMiscPatches();
@@ -36,7 +36,10 @@ void InstallResolutionListFix();
 void InstallTempCrashFixes();
 void InstallSyncPatches();
 void InstallObjectTrackers();
-void InstallLoadingScreenBgHooks();
+void InstallLoadingScreenHooks();
+void InstallTransitionScreenHooks();
+void InstallLoadingTipHooks();
+void InstallFocusSearchHooks();
 
 __int64 il2cpp_init_hook(auto original, const char* domain_name)
 {
@@ -107,8 +110,8 @@ __int64 il2cpp_init_hook(auto original, const char* domain_name)
       {"BuffFixHooks", {InstallBuffFixHooks, &cfg.installBuffFixHooks}},
       {"ToastBannerHooks", {InstallToastBannerHooks, &cfg.installToastBannerHooks}},
       {"PanHooks", {InstallPanHooks, &cfg.installPanHooks}},
-      {"ImproveResponsivenessHooks", {InstallImproveResponsivenessHooks, &cfg.installImproveResponsivenessHooks}},
       {"HotkeyHooks", {InstallHotkeyHooks, &cfg.installHotkeyHooks}},
+      {"GiftsBulkClaimHooks", {InstallGiftsBulkClaimHooks, &cfg.installGiftsBulkClaimHooks}},
 #if _WIN32
       {"FreeResizeHooks", {InstallFreeResizeHooks, &cfg.installFreeResizeHooks}},
 #endif
@@ -119,7 +122,10 @@ __int64 il2cpp_init_hook(auto original, const char* domain_name)
       {"ResolutionListFix", {InstallResolutionListFix, &cfg.installResolutionListFix}},
       {"SyncPatches", {InstallSyncPatches, &cfg.installSyncPatches}},
       {"ObjectTracker", {InstallObjectTrackers, &cfg.installObjectTracker}},
-      {"LoadingScreenBgHooks", {InstallLoadingScreenBgHooks, &cfg.installLoadingScreenBgHooks}},
+      {"LoadingScreen",        {InstallLoadingScreenHooks,   &cfg.installLoadingScreenHooks}},
+      {"TransitionScreen",     {InstallTransitionScreenHooks, &cfg.installTransitionScreenHooks}},
+      {"LoadingTip",           {InstallLoadingTipHooks,       &cfg.loader_tip_enabled}},
+      {"FocusSearch",          {InstallFocusSearchHooks,      &cfg.installFocusSearchHooks}},
   };
   printf("il2cpp_init_hook(%s)\n", domain_name);
 

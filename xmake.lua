@@ -6,6 +6,12 @@ option("bg_image")
     set_default("")
 option_end()
 
+option("use_original_bg")
+    set_showmenu(true)
+    set_description("Keep the original in-game loading screen background (no custom BG replacement, logos still shown)")
+    set_default(false)
+option_end()
+
 set_languages("c++23")
 
 set_runtimes("MT") -- Set the default build to multi-threaded static
@@ -16,7 +22,7 @@ add_requires("toml++")
 add_requires("nlohmann_json")
 add_requires("cpr")
 add_requireconfs("cpr.libcurl", { configs = { zlib = true } })
-add_requires("protobuf 32.1")
+add_requires("protobuf 35.1")
 
 if is_plat("windows") then
     includes("win-proxy-dll")
