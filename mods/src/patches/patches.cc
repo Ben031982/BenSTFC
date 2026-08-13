@@ -31,6 +31,7 @@ void InstallGiftsBulkClaimHooks();
 
 void InstallTestPatches();
 void InstallMiscPatches();
+void InstallMissionHudTweaksHooks();
 void InstallChatPatches();
 void InstallResolutionListFix();
 void InstallTempCrashFixes();
@@ -40,6 +41,8 @@ void InstallLoadingScreenHooks();
 void InstallTransitionScreenHooks();
 void InstallLoadingTipHooks();
 void InstallFocusSearchHooks();
+void InstallCargoFormatHooks();
+void InstallOfficerSortHooks();
 
 __int64 il2cpp_init_hook(auto original, const char* domain_name)
 {
@@ -69,7 +72,15 @@ __int64 il2cpp_init_hook(auto original, const char* domain_name)
   spdlog::set_level(log_level);
   spdlog::flush_on(log_level);
 
+#if VERSION_PATCH
+  if constexpr (sizeof(VERSION_COMMIT_HASH) > 1) {
+    spdlog::info("Initializing STFC Community Mod ({} [{}])", VER_PRODUCT_VERSION_STR, VERSION_COMMIT_HASH);
+  } else {
+    spdlog::info("Initializing STFC Community Mod ({})", VER_PRODUCT_VERSION_STR);
+  }
+#else
   spdlog::info("Initializing STFC Community Mod ({})", VER_PRODUCT_VERSION_STR);
+#endif
   spdlog::info("");
   if (File::hasCustomNames()) {
     spdlog::info("Using custom names");
@@ -118,6 +129,7 @@ __int64 il2cpp_init_hook(auto original, const char* domain_name)
       {"TempCrashFixes", {InstallTempCrashFixes, &cfg.installTempCrashFixes}},
       {"TestPatches", {InstallTestPatches, &cfg.installTestPatches}},
       {"MiscPatches", {InstallMiscPatches, &cfg.installMiscPatches}},
+      {"MissionHudTweaksHooks", {InstallMissionHudTweaksHooks, &cfg.installMissionHudTweaksHooks}},
       {"ChatPatches", {InstallChatPatches, &cfg.installChatPatches}},
       {"ResolutionListFix", {InstallResolutionListFix, &cfg.installResolutionListFix}},
       {"SyncPatches", {InstallSyncPatches, &cfg.installSyncPatches}},
@@ -126,6 +138,8 @@ __int64 il2cpp_init_hook(auto original, const char* domain_name)
       {"TransitionScreen",     {InstallTransitionScreenHooks, &cfg.installTransitionScreenHooks}},
       {"LoadingTip",           {InstallLoadingTipHooks,       &cfg.loader_tip_enabled}},
       {"FocusSearch",          {InstallFocusSearchHooks,      &cfg.installFocusSearchHooks}},
+      {"CargoFormat",          {InstallCargoFormatHooks,      &cfg.installCargoFormatHooks}},
+      {"OfficerSortHooks",     {InstallOfficerSortHooks,      &cfg.installOfficerSortHooks}},
   };
   printf("il2cpp_init_hook(%s)\n", domain_name);
 

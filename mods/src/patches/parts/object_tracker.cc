@@ -7,6 +7,7 @@
 #include "prime/CelestialObjectViewerWidget.h"
 #include "prime/EmbassyObjectViewer.h"
 #include "prime/FleetBarViewController.h"
+#include "prime/FleetMeshSelector.h"
 #include "prime/FullScreenChatViewController.h"
 #include "prime/HousingObjectViewerWidget.h"
 #include "prime/InventoryListViewController.h"
@@ -188,6 +189,7 @@ void InstallObjectTrackers()
 {
   TrackObject<PreScanTargetWidget>();
   TrackObject<FleetBarViewController>();
+  TrackObject<FleetMeshSelector>();
   TrackObject<AllianceStarbaseObjectViewerWidget>();
   TrackObject<AnimatedRewardsScreenViewController>();
   TrackObject<ArmadaObjectViewerWidget>();
@@ -205,6 +207,10 @@ void InstallObjectTrackers()
   TrackObject<StarNodeObjectViewerWidget>();
 
   SPUD_STATIC_DETOUR(il2cpp_unity_liveness_finalize, calc_liveness_hook);
+
+#if defined(__APPLE__) && defined(SPUD_ARCH_ARM64)
+  spdlog::warn("Object tracker: macOS ARM64 SPUD indirect-branch fix active; liveness-finalize hook enabled");
+#endif
 
 #if _WIN32
   auto GC_register_finalizer_inner_matches =

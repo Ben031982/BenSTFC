@@ -3,6 +3,7 @@
 #include <array>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <toml++/toml.h>
@@ -39,8 +40,8 @@ public:
   };
 
   std::string proxy;
-  bool verify_ssl = true;
 
+  bool verify_ssl = true;
   bool battlelogs = false;
   bool buffs      = false;
   bool buildings  = false;
@@ -103,6 +104,15 @@ public:
   std::string token;
 };
 
+enum class MissionHudVisibility {
+  Auto,
+  Always,
+  Never,
+};
+
+// Part of UI Scale
+void ApplyUiShipScaleToLoadedShips(float old_multiplier, float new_multiplier);
+
 class Config final
 {
 public:
@@ -119,7 +129,11 @@ public:
   static void Save(const toml::table& config, std::string_view filename, bool apply_warning = true);
   void        Load();
   void        AdjustUiScale(bool scaleUp);
+  void        AdjustUiShipScale(bool scaleUp);
   void        AdjustUiViewerScale(bool scaleUp);
+
+  [[nodiscard]] MissionHudVisibility MissionHudButtonVisibility(std::string_view button_name) const;
+  [[nodiscard]] bool                 MissionHudTweaksEnabled() const;
 
   // Disallow copying/moving to enforce singleton
   Config(const Config&)            = delete;
@@ -129,6 +143,7 @@ public:
 
   float ui_scale;
   float ui_scale_adjust;
+  float ui_scale_ship;
   float ui_scale_viewer;
   float zoom;
   float fr_scale;
@@ -181,7 +196,8 @@ public:
   bool show_hostile_cargo;
   bool show_armada_cargo;
 
-  bool always_skip_reveal_sequence;
+  bool                                        always_skip_reveal_sequence;
+  std::map<std::string, MissionHudVisibility> mission_hud_buttons;
 
   bool       sync_logging;
   bool       sync_debug;
@@ -200,6 +216,7 @@ public:
   bool installTempCrashFixes;
   bool installTestPatches;
   bool installMiscPatches;
+  bool installMissionHudTweaksHooks;
   bool installChatPatches;
   bool installResolutionListFix;
   bool installSyncPatches;
@@ -221,4 +238,11 @@ public:
   bool installLoadingScreenHooks;
   bool installTransitionScreenHooks;
   bool installFocusSearchHooks;
+
+  // Cargo formatting
+  bool installCargoFormatHooks;
+  int  cargo_significant_decimals;
+
+  // Officer roster/assignment "Below Deck Ability" sort option restore
+  bool installOfficerSortHooks;
 };
