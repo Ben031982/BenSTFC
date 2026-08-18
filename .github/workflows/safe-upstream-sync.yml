@@ -12,10 +12,8 @@ permissions:
 
 jobs:
   sync:
+    name: Sync upstream dev
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout fork
@@ -23,49 +21,73 @@ jobs:
         with:
           fetch-depth: 0
           ref: dev
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
 
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Add upstream
+      - name: Add upstream remote
+        shell: bash
         run: |
-          git remote add upstream https://github.com/netniV/stfc-mod.git
+          set -euo pipefail
+
+          if git remote get-url upstream >/dev/null 2>&1; then
+            git remote set-url upstream https://github.com/netniV/stfc-mod.git
+          else
+            git remote add upstream https://github.com/netniV/stfc-mod.git
+          fi
+
           git fetch upstream dev
 
-      - name: Check whether update is needed
+      - name: Check for upstream updates
         id: check
         shell: bash
         run: |
+          set -euo pipefail
+
           if git merge-base --is-ancestor upstream/dev HEAD; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "Fork is already up to date with upstream/dev."
+            echo "Fork already contains all commits from upstream/dev."
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "New upstream commits found."
+            echo "New commits found on upstream/dev."
           fi
 
-      - name: Test merge
+      - name: Merge upstream safely
         if: steps.check.outputs.needed == 'true'
-        id: merge
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
 
-          git merge upstream/dev --no-edit
-          STATUS=$?
-
-          if [ $STATUS -ne 0 ]; then
-            echo "Merge conflict detected."
-            git merge --abort
-            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          if ! git merge upstream/dev --no-edit; then
+            echo "::error::Merge conflict detected. Nothing will be pushed."
+            git merge --abort || true
             exit 1
           fi
 
-          echo "conflict=false" >> "$GITHUB_OUTPUT"
-
-      - name: Push merged changes
-        if: steps.check.outputs.needed == 'true' && success()
+      - name: Verify merge
+        if: steps.check.outputs.needed == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
+
+          git status --short
+
+          if ! git merge-base --is-ancestor upstream/dev HEAD; then
+            echo "::error::Upstream branch was not merged successfully."
+            exit 1
+          fi
+
+      - name: Push updated dev branch
+        if: steps.check.outputs.needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
           git push origin HEAD:dev
+
+      - name: No update required
+        if: steps.check.outputs.needed == 'false'
+        run: |
+          echo "BenSTFC/dev is already up to date with netniV/stfc-mod:dev."
