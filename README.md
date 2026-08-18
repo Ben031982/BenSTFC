@@ -8,7 +8,7 @@ enable the game to work even if the full release does not.
 
 <div align="center">
 
-🖖 NGO Build — New Galaxy Order
+## NGO Build — New Galaxy Order
 
 <img src="assets/stfc-mod-logo-fullsize.png" alt="NGO - New Galaxy Order | Star Trek Fleet Command" width="750">
 
