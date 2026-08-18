@@ -1,0 +1,71 @@
+name: Safe upstream sync
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+      timezone: "Europe/Berlin"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: dev
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream
+        run: |
+          git remote add upstream https://github.com/netniV/stfc-mod.git
+          git fetch upstream dev
+
+      - name: Check whether update is needed
+        id: check
+        shell: bash
+        run: |
+          if git merge-base --is-ancestor upstream/dev HEAD; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "Fork is already up to date with upstream/dev."
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "New upstream commits found."
+          fi
+
+      - name: Test merge
+        if: steps.check.outputs.needed == 'true'
+        id: merge
+        shell: bash
+        run: |
+          set +e
+
+          git merge upstream/dev --no-edit
+          STATUS=$?
+
+          if [ $STATUS -ne 0 ]; then
+            echo "Merge conflict detected."
+            git merge --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "conflict=false" >> "$GITHUB_OUTPUT"
+
+      - name: Push merged changes
+        if: steps.check.outputs.needed == 'true' && success()
+        run: |
+          git push origin HEAD:dev
