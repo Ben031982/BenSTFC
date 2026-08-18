@@ -6,6 +6,40 @@ The latest full release will always be available on the GitHub site. However, fo
 on the [STFC Community Mod](https://discord.gg/PrpHgs7Vjs) discord server. This channel will always contain any hotfixes that
 enable the game to work even if the full release does not.
 
+<div align="center">
+
+🖖 NGO Build — New Galaxy Order
+
+<img src="assets/stfc-mod-logo-fullsize.png" alt="NGO - New Galaxy Order | Star Trek Fleet Command" width="750">
+
+Star Trek Fleet Command — NGO Custom Build
+
+Customized for New Galaxy Order (NGO) — Server 139
+
+</div>
+
+[!NOTE]
+This repository contains a custom NGO build based on the excellent
+STFC Community Mod.
+
+The original Community Mod and its core functionality are developed and maintained by the STFC Community Mod contributors.
+This fork adds NGO-specific branding, graphics and personal customizations while continuing to track and integrate updates from the upstream project.
+
+✨ NGO Customizations
+🖖 New Galaxy Order (NGO) branding
+🌌 Custom Star Trek Fleet Command graphics and loading screens
+🛰️ Server 139 themed assets
+🔄 Regular synchronization with the latest STFC Community Mod dev branch
+
+<div align="center">
+
+NGO — New Galaxy Order
+Server 139
+
+Built upon the STFC Community Mod
+
+</div>
+
 ## BACK TO THE REGULAR STUFF:
 
 <p align="center">
