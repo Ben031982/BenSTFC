@@ -139,10 +139,12 @@ jobs:
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Create the release and upload every release asset in one action.
+      # Create or update the release and upload every release asset.
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
+          allowUpdates: true
+
           tag: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
 
