@@ -18,18 +18,17 @@ Customized for New Galaxy Order (NGO) — Server 139
 
 </div>
 
-[!NOTE]
 This repository contains a custom NGO build based on the excellent
 STFC Community Mod.
 
 The original Community Mod and its core functionality are developed and maintained by the STFC Community Mod contributors.
 This fork adds NGO-specific branding, graphics and personal customizations while continuing to track and integrate updates from the upstream project.
 
-✨ NGO Customizations
-🖖 New Galaxy Order (NGO) branding
-🌌 Custom Star Trek Fleet Command graphics and loading screens
-🛰️ Server 139 themed assets
-🔄 Regular synchronization with the latest STFC Community Mod dev branch
+✨ NGO Customizations </br>
+🖖 New Galaxy Order (NGO) branding </br>
+🌌 Custom Star Trek Fleet Command graphics and loading screens </br>
+🛰️ Server 139 themed assets </br>
+🔄 Regular synchronization with the latest STFC Community Mod dev branch </br>
 
 <div align="center">
 
