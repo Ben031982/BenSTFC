@@ -1,0 +1,274 @@
+name: Auto NGO Release
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: auto-ngo-release
+  cancel-in-progress: false
+
+jobs:
+  auto-release:
+    name: Sync, build and tag NGO release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: dev
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git remote get-url upstream >/dev/null 2>&1; then
+            git remote set-url upstream https://github.com/netniV/stfc-mod.git
+          else
+            git remote add upstream https://github.com/netniV/stfc-mod.git
+          fi
+
+          git fetch upstream dev --tags
+          git fetch origin dev --tags
+
+      - name: Get latest official upstream release
+        id: upstream_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          upstream_tag="$(
+            gh api /repos/netniV/stfc-mod/releases/latest --jq '.tag_name'
+          )"
+
+          if [[ -z "$upstream_tag" || "$upstream_tag" == "null" ]]; then
+            echo "::error::Could not determine the latest official netniV release tag."
+            exit 1
+          fi
+
+          ngo_tag="${upstream_tag}-ngo.1"
+
+          echo "Latest upstream release: $upstream_tag"
+          echo "Expected NGO release tag: $ngo_tag"
+
+          echo "upstream_tag=$upstream_tag" >> "$GITHUB_OUTPUT"
+          echo "ngo_tag=$ngo_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether NGO release already exists
+        id: existing_release
+        shell: bash
+        env:
+          NGO_TAG: ${{ steps.upstream_release.outputs.ngo_tag }}
+        run: |
+          set -euo pipefail
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$NGO_TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "NGO tag $NGO_TAG already exists. Nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "NGO tag $NGO_TAG does not exist yet."
+          fi
+
+      - name: Check for upstream dev updates
+        if: steps.existing_release.outputs.exists == 'false'
+        id: sync_check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git merge-base --is-ancestor upstream/dev HEAD; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "BenSTFC/dev already contains upstream/dev."
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "New upstream/dev commits found."
+          fi
+
+      - name: Merge upstream safely and preserve NGO branding
+        if: steps.existing_release.outputs.exists == 'false' && steps.sync_check.outputs.needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pre_merge_sha="$(git rev-parse HEAD)"
+
+          protected_files=(
+            "assets/loadingscreen.png"
+            "assets/stfc-mod-logo-fullsize.png"
+            "assets/stfc-mod-logo.png"
+            "mods/src/patches/parts/embedded_loading_image.h"
+            "mods/src/patches/parts/embedded_logo_image.h"
+            "mods/src/patches/parts/loading.png"
+          )
+
+          is_protected_file() {
+            local file="$1"
+
+            for protected in "${protected_files[@]}"; do
+              if [[ "$file" == "$protected" ]]; then
+                return 0
+              fi
+            done
+
+            return 1
+          }
+
+          echo "Merging upstream/dev into BenSTFC/dev..."
+
+          if ! git merge upstream/dev --no-edit --no-ff --no-commit; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+
+            echo "Merge conflicts detected:"
+            echo "$conflicts"
+
+            while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+
+              if ! is_protected_file "$file"; then
+                echo "::error::Unexpected merge conflict in $file"
+                echo "::error::Merge aborted. Nothing will be pushed or released."
+                git merge --abort || true
+                exit 1
+              fi
+            done <<< "$conflicts"
+          fi
+
+          # Always restore NGO-owned branding files from the pre-merge commit.
+          # This protects them even if Git can auto-merge an upstream change.
+          for file in "${protected_files[@]}"; do
+            if git cat-file -e "$pre_merge_sha:$file" 2>/dev/null; then
+              echo "Preserving NGO version of $file"
+              git checkout "$pre_merge_sha" -- "$file"
+              git add "$file"
+            fi
+          done
+
+          remaining_conflicts="$(git diff --name-only --diff-filter=U)"
+
+          if [[ -n "$remaining_conflicts" ]]; then
+            echo "::error::Unresolved merge conflicts remain:"
+            echo "$remaining_conflicts"
+            git merge --abort || true
+            exit 1
+          fi
+
+          git commit --no-edit
+
+      - name: Verify upstream merge
+        if: steps.existing_release.outputs.exists == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! git merge-base --is-ancestor upstream/dev HEAD; then
+            echo "::error::upstream/dev is not contained in the resulting dev branch."
+            exit 1
+          fi
+
+          echo "Upstream sync verified."
+          echo "Current HEAD: $(git rev-parse HEAD)"
+
+      - name: Push updated dev branch
+        if: steps.existing_release.outputs.exists == 'false' && steps.sync_check.outputs.needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:dev
+
+      - name: Record release commit
+        if: steps.existing_release.outputs.exists == 'false'
+        id: release_commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          head_sha="$(git rev-parse HEAD)"
+          echo "sha=$head_sha" >> "$GITHUB_OUTPUT"
+          echo "NGO release will use commit $head_sha"
+
+      - name: Wait for successful Build
+        if: steps.existing_release.outputs.exists == 'false'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.release_commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          echo "Waiting for Build workflow for commit $HEAD_SHA..."
+
+          for attempt in $(seq 1 60); do
+            run_id="$(
+              gh api \
+                "/repos/${{ github.repository }}/actions/runs?head_sha=$HEAD_SHA&per_page=100" \
+                --jq '.workflow_runs[] | select(.name == "Build") | .id' \
+                | head -n 1
+            )"
+
+            if [[ -z "$run_id" ]]; then
+              echo "[$attempt/60] Build run not visible yet. Waiting 30 seconds..."
+              sleep 30
+              continue
+            fi
+
+            status="$(gh api "/repos/${{ github.repository }}/actions/runs/$run_id" --jq '.status')"
+            conclusion="$(gh api "/repos/${{ github.repository }}/actions/runs/$run_id" --jq '.conclusion // ""')"
+
+            echo "[$attempt/60] Build run $run_id: status=$status conclusion=$conclusion"
+
+            if [[ "$status" == "completed" ]]; then
+              if [[ "$conclusion" == "success" ]]; then
+                echo "Build completed successfully."
+                exit 0
+              fi
+
+              echo "::error::Build completed with conclusion: $conclusion"
+              exit 1
+            fi
+
+            sleep 30
+          done
+
+          echo "::error::Timed out waiting for a successful Build workflow."
+          exit 1
+
+      - name: Create and push NGO release tag
+        if: steps.existing_release.outputs.exists == 'false'
+        shell: bash
+        env:
+          NGO_TAG: ${{ steps.upstream_release.outputs.ngo_tag }}
+          HEAD_SHA: ${{ steps.release_commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          echo "Creating NGO tag $NGO_TAG at $HEAD_SHA"
+
+          git tag "$NGO_TAG" "$HEAD_SHA"
+          git push origin "$NGO_TAG"
+
+          echo "Tag pushed successfully."
+          echo "The existing Create Release workflow should now publish the NGO release."
+
+      - name: No new upstream release
+        if: steps.existing_release.outputs.exists == 'true'
+        run: |
+          echo "The latest official netniV release already has a corresponding NGO tag."
+          echo "No sync, build or release was required."
