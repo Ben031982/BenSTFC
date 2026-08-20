@@ -61,10 +61,80 @@ jobs:
         run: |
           set -euo pipefail
 
-          if ! git merge upstream/dev --no-edit; then
-            echo "::error::Merge conflict detected. Nothing will be pushed."
-            git merge --abort || true
-            exit 1
+          echo "Starting safe merge from upstream/dev..."
+
+          if git merge upstream/dev --no-edit --no-commit; then
+            echo "Upstream merged without conflicts."
+          else
+            echo "Merge conflicts detected."
+            echo "Checking whether all conflicts are approved NGO branding conflicts..."
+
+            conflicts="$(git diff --name-only --diff-filter=U)"
+
+            echo "Conflicting files:"
+            echo "$conflicts"
+
+            # Files where the NGO version must always win.
+            protected_files=(
+              "assets/loadingscreen.png"
+              "assets/stfc-mod-logo-fullsize.png"
+              "assets/stfc-mod-logo.png"
+              "mods/src/patches/parts/embedded_loading_image.h"
+              "mods/src/patches/parts/embedded_logo_image.h"
+              "mods/src/patches/parts/loading.png"
+            )
+
+            is_protected_file() {
+              local file="$1"
+
+              for protected in "${protected_files[@]}"; do
+                if [[ "$file" == "$protected" ]]; then
+                  return 0
+                fi
+              done
+
+              return 1
+            }
+
+            # Abort if ANY conflict exists outside the approved NGO files.
+            while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+
+              if ! is_protected_file "$file"; then
+                echo "::error::Unexpected merge conflict in $file"
+                echo "::error::Merge aborted. Nothing will be pushed."
+
+                git merge --abort || true
+                exit 1
+              fi
+            done <<< "$conflicts"
+
+            # Keep our NGO version of every protected conflicting file.
+            while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+
+              if is_protected_file "$file"; then
+                echo "Keeping NGO version of $file"
+
+                git checkout --ours -- "$file"
+                git add "$file"
+              fi
+            done <<< "$conflicts"
+
+            # Verify that every conflict has been resolved.
+            remaining_conflicts="$(git diff --name-only --diff-filter=U)"
+
+            if [[ -n "$remaining_conflicts" ]]; then
+              echo "::error::Unresolved merge conflicts remain:"
+              echo "$remaining_conflicts"
+
+              git merge --abort || true
+              exit 1
+            fi
+
+            echo "All approved NGO conflicts resolved successfully."
+
+            git commit --no-edit
           fi
 
       - name: Verify merge
@@ -73,6 +143,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          echo "Git status:"
           git status --short
 
           if ! git merge-base --is-ancestor upstream/dev HEAD; then
@@ -80,11 +151,15 @@ jobs:
             exit 1
           fi
 
+          echo "Upstream/dev successfully merged into BenSTFC/dev."
+
       - name: Push updated dev branch
         if: steps.check.outputs.needed == 'true'
         shell: bash
         run: |
           set -euo pipefail
+
+          echo "Pushing updated dev branch..."
           git push origin HEAD:dev
 
       - name: No update required
