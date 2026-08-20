@@ -1,0 +1,133 @@
+name: Manual NGO Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v1.1.5.5-ngo.2"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: manual-ngo-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish NGO release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: dev
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?-ngo\.[0-9]+$ ]]; then
+            echo "::error::Invalid tag format: $RELEASE_TAG"
+            echo "::error::Use a tag like v1.1.5.5-ngo.2"
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $RELEASE_TAG already exists. Choose a new NGO tag."
+            exit 1
+          fi
+
+      - name: Create fresh release commit
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          git commit --allow-empty -m "Prepare manual release $RELEASE_TAG"
+          git push origin HEAD:dev
+
+      - name: Record release commit
+        id: release_commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          head_sha="$(git rev-parse HEAD)"
+          echo "sha=$head_sha" >> "$GITHUB_OUTPUT"
+          echo "Release commit: $head_sha"
+
+      - name: Wait for successful Build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.release_commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          echo "Waiting for Build workflow for commit $HEAD_SHA..."
+
+          for attempt in $(seq 1 60); do
+            run_id="$(
+              gh api \
+                "/repos/${{ github.repository }}/actions/runs?head_sha=$HEAD_SHA&per_page=100" \
+                --jq '.workflow_runs[] | select(.name == "Build") | .id' \
+                | head -n 1
+            )"
+
+            if [[ -z "$run_id" ]]; then
+              echo "[$attempt/60] Build run not visible yet. Waiting 30 seconds..."
+              sleep 30
+              continue
+            fi
+
+            status="$(gh api "/repos/${{ github.repository }}/actions/runs/$run_id" --jq '.status')"
+            conclusion="$(gh api "/repos/${{ github.repository }}/actions/runs/$run_id" --jq '.conclusion // ""')"
+
+            echo "[$attempt/60] Build run $run_id: status=$status conclusion=$conclusion"
+
+            if [[ "$status" == "completed" ]]; then
+              if [[ "$conclusion" == "success" ]]; then
+                echo "Build completed successfully."
+                exit 0
+              fi
+
+              echo "::error::Build completed with conclusion: $conclusion"
+              exit 1
+            fi
+
+            sleep 30
+          done
+
+          echo "::error::Timed out waiting for the Build workflow."
+          exit 1
+
+      - name: Create and push release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          HEAD_SHA: ${{ steps.release_commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          echo "Creating tag $RELEASE_TAG at $HEAD_SHA"
+          git tag "$RELEASE_TAG" "$HEAD_SHA"
+          git push origin "$RELEASE_TAG"
+
+          echo "Tag pushed successfully."
+          echo "The existing Create Release workflow will now publish the release."
