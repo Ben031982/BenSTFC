@@ -1,0 +1,36 @@
+name: Manual Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-build:
+    name: Trigger Build on dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: dev
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Trigger Build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git commit --allow-empty -m "Trigger manual build"
+          git push origin HEAD:dev
+
+          echo "Manual build trigger pushed to dev."
+          echo "The existing Build workflow will start automatically."
