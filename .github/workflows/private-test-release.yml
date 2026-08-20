@@ -48,7 +48,7 @@ jobs:
 
           if (-not $upstreamTag) { throw "Could not determine netniV release tag." }
 
-          $draftTag = "private-$upstreamTag-ngo.1"
+          $draftTag = "$upstreamTag-ngo.private.1"
           "upstream_tag=$upstreamTag" >> $env:GITHUB_OUTPUT
           "draft_tag=$draftTag" >> $env:GITHUB_OUTPUT
 
