@@ -65,6 +65,7 @@ jobs:
 
           if git merge upstream/dev --no-edit --no-commit; then
             echo "Upstream merged without conflicts."
+            git commit --no-edit
           else
             echo "Merge conflicts detected."
             echo "Checking whether all conflicts are approved NGO branding conflicts..."
