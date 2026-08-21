@@ -1,4 +1,4 @@
-name: Create Release
+name: Publish NGO Release from Tag
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   create-release:
-    name: Create Release
+    name: Publish NGO Release from Tag
     runs-on: ubuntu-24.04
 
     steps:
@@ -185,7 +185,7 @@ jobs:
           echo "Using automatically generated GitHub release notes."
 
       # Create or update the release and upload every release asset.
-      - name: Create Release
+      - name: Publish NGO Release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
