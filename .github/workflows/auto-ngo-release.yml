@@ -1,8 +1,13 @@
-name: Auto NGO Release
+name: Sync netniV & Build NGO Release
 
 on:
   schedule:
+    # Check hourly for a new official netniV release.
     - cron: "17 * * * *"
+
+    # Keep dev synchronized once per day even when no new release exists.
+    - cron: "0 6 * * *"
+      timezone: "Europe/Berlin"
 
   workflow_dispatch:
 
@@ -11,12 +16,12 @@ permissions:
   actions: read
 
 concurrency:
-  group: auto-ngo-release
+  group: sync-netniv-and-build-ngo-release
   cancel-in-progress: false
 
 jobs:
-  auto-release:
-    name: Sync, build and tag NGO release
+  sync-and-release:
+    name: Sync netniV and build NGO release
     runs-on: ubuntu-latest
 
     steps:
@@ -46,7 +51,7 @@ jobs:
           git fetch upstream dev --tags
           git fetch origin dev --tags
 
-      - name: Get latest official upstream release
+      - name: Get latest official netniV release
         id: upstream_release
         shell: bash
         env:
@@ -65,7 +70,7 @@ jobs:
 
           ngo_tag="${upstream_tag}-ngo.1"
 
-          echo "Latest upstream release: $upstream_tag"
+          echo "Latest netniV release: $upstream_tag"
           echo "Expected NGO release tag: $ngo_tag"
 
           echo "upstream_tag=$upstream_tag" >> "$GITHUB_OUTPUT"
@@ -81,14 +86,44 @@ jobs:
 
           if git ls-remote --exit-code --tags origin "refs/tags/$NGO_TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "NGO tag $NGO_TAG already exists. Nothing to do."
+            echo "NGO tag $NGO_TAG already exists."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "NGO tag $NGO_TAG does not exist yet."
+            echo "NGO tag $NGO_TAG does not exist yet. A new NGO release is required."
           fi
 
+      - name: Determine whether dev sync is required for this run
+        id: mode
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          NGO_RELEASE_EXISTS: ${{ steps.existing_release.outputs.exists }}
+        run: |
+          set -euo pipefail
+
+          sync_due=false
+
+          # Manual runs always perform a full sync check.
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            sync_due=true
+          fi
+
+          # Daily 06:00 run replaces the former Safe upstream sync workflow.
+          if [[ "$EVENT_SCHEDULE" == "0 6 * * *" ]]; then
+            sync_due=true
+          fi
+
+          # A new official netniV release must always be built from synchronized dev.
+          if [[ "$NGO_RELEASE_EXISTS" == "false" ]]; then
+            sync_due=true
+          fi
+
+          echo "sync_due=$sync_due" >> "$GITHUB_OUTPUT"
+          echo "Sync check required: $sync_due"
+
       - name: Check for upstream dev updates
-        if: steps.existing_release.outputs.exists == 'false'
+        if: steps.mode.outputs.sync_due == 'true'
         id: sync_check
         shell: bash
         run: |
@@ -96,14 +131,14 @@ jobs:
 
           if git merge-base --is-ancestor upstream/dev HEAD; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "BenSTFC/dev already contains upstream/dev."
+            echo "BenSTFC/dev already contains all commits from netniV/dev."
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "New upstream/dev commits found."
+            echo "New commits found on netniV/dev."
           fi
 
       - name: Merge upstream safely and preserve NGO branding
-        if: steps.existing_release.outputs.exists == 'false' && steps.sync_check.outputs.needed == 'true'
+        if: steps.mode.outputs.sync_due == 'true' && steps.sync_check.outputs.needed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -131,7 +166,7 @@ jobs:
             return 1
           }
 
-          echo "Merging upstream/dev into BenSTFC/dev..."
+          echo "Merging netniV/dev into BenSTFC/dev..."
 
           if ! git merge upstream/dev --no-edit --no-ff --no-commit; then
             conflicts="$(git diff --name-only --diff-filter=U)"
@@ -139,6 +174,7 @@ jobs:
             echo "Merge conflicts detected:"
             echo "$conflicts"
 
+            # Abort if any conflict exists outside the approved NGO-owned files.
             while IFS= read -r file; do
               [[ -z "$file" ]] && continue
 
@@ -151,8 +187,8 @@ jobs:
             done <<< "$conflicts"
           fi
 
-          # Always restore NGO-owned branding files from the pre-merge commit.
-          # This protects them even if Git can auto-merge an upstream change.
+          # Always restore NGO-owned branding from the pre-merge commit.
+          # This protects the NGO versions even when Git could auto-merge them.
           for file in "${protected_files[@]}"; do
             if git cat-file -e "$pre_merge_sha:$file" 2>/dev/null; then
               echo "Preserving NGO version of $file"
@@ -173,27 +209,32 @@ jobs:
           git commit --no-edit
 
       - name: Verify upstream merge
-        if: steps.existing_release.outputs.exists == 'false'
+        if: steps.mode.outputs.sync_due == 'true'
         shell: bash
         run: |
           set -euo pipefail
 
+          echo "Git status:"
+          git status --short
+
           if ! git merge-base --is-ancestor upstream/dev HEAD; then
-            echo "::error::upstream/dev is not contained in the resulting dev branch."
+            echo "::error::netniV/dev is not contained in the resulting BenSTFC/dev branch."
             exit 1
           fi
 
-          echo "Upstream sync verified."
+          echo "netniV/dev successfully synchronized with BenSTFC/dev."
           echo "Current HEAD: $(git rev-parse HEAD)"
 
       - name: Push updated dev branch
-        if: steps.existing_release.outputs.exists == 'false' && steps.sync_check.outputs.needed == 'true'
+        if: steps.mode.outputs.sync_due == 'true' && steps.sync_check.outputs.needed == 'true'
         shell: bash
         run: |
           set -euo pipefail
+
+          echo "Pushing synchronized dev branch..."
           git push origin HEAD:dev
 
-      - name: Record release commit
+      - name: Record NGO release commit
         if: steps.existing_release.outputs.exists == 'false'
         id: release_commit
         shell: bash
@@ -265,10 +306,10 @@ jobs:
           git push origin "$NGO_TAG"
 
           echo "Tag pushed successfully."
-          echo "The existing Create Release workflow should now publish the NGO release."
+          echo "Publish NGO Release from Tag will now publish the release automatically."
 
-      - name: No new upstream release
+      - name: Release status
         if: steps.existing_release.outputs.exists == 'true'
         run: |
-          echo "The latest official netniV release already has a corresponding NGO tag."
-          echo "No sync, build or release was required."
+          echo "The latest official netniV release already has a corresponding NGO release tag."
+          echo "No new NGO release is required."
