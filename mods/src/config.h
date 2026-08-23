@@ -183,6 +183,7 @@ public:
   std::vector<int> disabled_banner_types;
   std::vector<int> notify_banner_types;
 
+  int  extend_chest_purchase_max;
   int  extend_donation_max;
   bool extend_donation_slider;
   bool disable_move_keys;
@@ -197,6 +198,14 @@ public:
   bool auto_confirm_ft_upgrade;
 
   InstantWarpConfirmation auto_confirm_instant_warp;
+
+  std::vector<std::string> instant_warp_auto_jump;
+  std::vector<std::string> instant_warp_auto_warp;
+  bool                     instant_warp_auto_jump_all = false;
+  bool                     instant_warp_auto_warp_all = false;
+
+  std::vector<std::string> instant_warp_always_ask;
+  bool                     instant_warp_always_ask_all = false;
 
   bool show_cargo_default;
   bool show_player_cargo;

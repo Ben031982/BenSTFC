@@ -420,6 +420,37 @@ InstantWarpConfirmation get_auto_confirm_instant_warp(toml::table& config, toml:
   return confirmation;
 }
 
+void parse_ship_filter(std::string_view value, std::vector<std::string>& names, bool& match_all)
+{
+  names.clear();
+  match_all = false;
+  if (AsciiStrToUpper(StripAsciiWhitespace(value)) == "*") {
+    match_all = true;
+    return;
+  }
+  for (const auto& token : StrSplit(std::string(value), ',')) {
+    auto stripped = StripAsciiWhitespace(token);
+    if (stripped.empty()) continue;
+    auto normalized = AsciiStrToUpper(stripped);
+    names.emplace_back(normalized);
+  }
+}
+
+void read_instant_warp_filter(toml::table& config, toml::table& new_config, std::string_view key,
+                              std::vector<std::string>& names, bool& match_all,
+                              std::string_view default_value, bool write_log)
+{
+  const auto value = config["ui"][key].value<std::string>().value_or(std::string(default_value));
+  parse_ship_filter(value, names, match_all);
+
+  new_config.emplace<toml::table>("ui", toml::table());
+  new_config["ui"].as_table()->insert_or_assign(std::string(key), std::string(value));
+
+  if (write_log) {
+    spdlog::debug("config value ui.{}: {}", key, value);
+  }
+}
+
 void read_sync_targets(toml::table& config, toml::table& new_config,
                        std::map<std::string, SyncTargetConfig>& sync_targets, const SyncConfig& defaults)
 {
@@ -866,12 +897,20 @@ void Config::Load()
   this->auto_confirm_instant_warp =
       get_auto_confirm_instant_warp(config, parsed, DCU::auto_confirm_instant_warp, write_config);
   this->installInstantWarpConfirmationHooks = true;
-  
+  read_instant_warp_filter(config, parsed, "instant_warp_auto_jump", this->instant_warp_auto_jump,
+                           this->instant_warp_auto_jump_all, DCU::instant_warp_auto_jump, write_config);
+  read_instant_warp_filter(config, parsed, "instant_warp_auto_warp", this->instant_warp_auto_warp,
+                           this->instant_warp_auto_warp_all, DCU::instant_warp_auto_warp, write_config);
+  read_instant_warp_filter(config, parsed, "instant_warp_always_ask", this->instant_warp_always_ask,
+                           this->instant_warp_always_ask_all, DCU::instant_warp_always_ask, write_config);
+
   this->auto_confirm_ft_upgrade =
       get_config_or_default(config, parsed, "ui", "auto_confirm_ft_upgrade",
                             DCU::auto_confirm_ft_upgrade, write_config);
 
 #if _WIN32
+  this->extend_chest_purchase_max = get_config_or_default(config, parsed, "ui", "extend_chest_purchase_max",
+                                                          DCU::extend_chest_purchase_max, write_config);
   this->extend_donation_slider =
       get_config_or_default(config, parsed, "ui", "extend_donation_slider", DCU::extend_donation_slider, write_config);
   this->extend_donation_max =
