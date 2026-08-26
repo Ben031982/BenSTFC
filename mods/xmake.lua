@@ -58,6 +58,12 @@ do
         local assets = path.join(target:scriptdir(), "../assets")
         local outdir  = path.join(target:scriptdir(), "src/patches/parts")
 
+        -- These two files are generated build artifacts. Remove any tracked legacy
+        -- versions first so the current generator always recreates them with the
+        -- symbol names expected by loading_screen_common.h.
+        os.rm(path.join(outdir, "embedded_loading_image.h"))
+        os.rm(path.join(outdir, "embedded_logo_image.h"))
+
         local loading = get_config("bg_image")
         if not loading or loading == "" then
             loading = path.join(assets, "loadingscreen.png")
