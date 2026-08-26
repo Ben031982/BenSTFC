@@ -149,8 +149,6 @@ jobs:
             "assets/loadingscreen.png"
             "assets/stfc-mod-logo-fullsize.png"
             "assets/stfc-mod-logo.png"
-            "mods/src/patches/parts/embedded_loading_image.h"
-            "mods/src/patches/parts/embedded_logo_image.h"
             "mods/src/patches/parts/loading.png"
           )
 
@@ -188,7 +186,8 @@ jobs:
           fi
 
           # Always restore NGO-owned branding from the pre-merge commit.
-          # This protects the NGO versions even when Git could auto-merge them.
+          # Generated embedded image headers are intentionally not protected;
+          # the current upstream build logic must be allowed to regenerate them.
           for file in "${protected_files[@]}"; do
             if git cat-file -e "$pre_merge_sha:$file" 2>/dev/null; then
               echo "Preserving NGO version of $file"
