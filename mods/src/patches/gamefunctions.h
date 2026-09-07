@@ -48,6 +48,7 @@ enum GameFunction {
   ShowEvents,
   NativeShortcutEvents,
   ShowSettings,
+  ToggleShortcutHints,
   ZoomPreset1,
   ZoomPreset2,
   ZoomPreset3,
@@ -98,6 +99,10 @@ enum GameFunction {
   Restart,
   Quit,
   FocusSearch,
+
+  ShowShipConstruction,
+  ShowShields,
+  ShowBattlelogs,
 
   // Automatic max value
   Max

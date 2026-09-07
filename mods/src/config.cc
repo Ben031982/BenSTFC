@@ -20,6 +20,7 @@
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace DCP  = DefaultConfig::Patches;
 namespace DCA  = DefaultConfig::Audio;
@@ -713,7 +714,7 @@ void parse_config_shortcut_value(toml::table& new_config, std::string_view item,
 
     if (mapKey.Key != KeyCode::None) {
       keyAdded = true;
-      MapKey::AddMappedKey(gameFunction, mapKey);
+      MapKey::AddMappedKey(gameFunction, std::move(mapKey));
     } else if (!wantedKey.empty()) {
       spdlog::warn("Invalid shortcut token [shortcuts].{} token='{}' value='{}'; ignoring token.",
                    shortcut_value.source_item, wantedKey, config_value);
@@ -1356,10 +1357,15 @@ void Config::Load()
   parse_config_shortcut(config, parsed, "show_research", GameFunction::ShowResearch, DCSH::show_research);
   parse_config_shortcut(config, parsed, "show_scrapyard", GameFunction::ShowScrapYard, DCSH::show_scrapyard);
   parse_config_shortcut(config, parsed, "show_settings", GameFunction::ShowSettings, DCSH::show_settings);
+  parse_config_shortcut(config, parsed, "toggle_shortcut_hints", GameFunction::ToggleShortcutHints,
+                        DCSH::toggle_shortcut_hints);
   parse_config_shortcut(config, parsed, "show_officers", GameFunction::ShowOfficers, DCSH::show_officers);
   parse_config_shortcut(config, parsed, "show_qtrials", GameFunction::ShowQTrials, DCSH::show_qtrials);
   parse_config_shortcut(config, parsed, "show_refinery", GameFunction::ShowRefinery, DCSH::show_refinery);
   parse_config_shortcut(config, parsed, "show_ships", GameFunction::ShowShips, DCSH::show_ships);
+  parse_config_shortcut(config, parsed, "show_shipconstruction", GameFunction::ShowShipConstruction, DCSH::show_shipconstruction);
+  parse_config_shortcut(config, parsed, "show_shields", GameFunction::ShowShields, DCSH::show_shields);
+  parse_config_shortcut(config, parsed, "show_battlelogs", GameFunction::ShowBattlelogs, DCSH::show_battlelogs);
   parse_config_shortcut(config, parsed, "show_stationexterior", GameFunction::ShoWStationExterior,
                         DCSH::show_stationexterior);
   parse_config_shortcut(config, parsed, "show_stationinterior", GameFunction::ShowStationInterior,
