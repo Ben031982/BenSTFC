@@ -31,6 +31,7 @@ namespace Control
 
 namespace Graphics
 {
+  constexpr bool        galactic_anomaly_timer       = false;
   constexpr bool        borderless_fullscreen       = true;
   constexpr bool        allow_cursor                = true;
   constexpr const char* zoom_label_player_detail        = "native";
@@ -165,6 +166,7 @@ namespace Shortcuts
   constexpr const char* show_settings         = "SHIFT-S";
   constexpr const char* show_ships            = "N";
   constexpr const char* show_shipconstruction = "SHIFT-N";
+  constexpr const char* show_shipswap         = "ALT-N";
   constexpr const char* show_shields          = "CTRL-S";
   constexpr const char* show_battlelogs       = "SHIFT-B";
   constexpr const char* show_stationexterior  = "SHIFT-G";

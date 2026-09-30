@@ -1182,6 +1182,8 @@ void Config::Load()
       get_config_or_default<std::string>(config, parsed, "graphics", "loader_image", DCG::loader_image, write_log);
   this->loader_logo_scale =
       get_config_or_default(config, parsed, "graphics", "loader_logo_scale", DCG::loader_logo_scale, write_log);
+  this->galactic_anomaly_timer =
+      get_config_or_default(config, parsed, "graphics", "galactic_anomaly_timer", DCG::galactic_anomaly_timer, write_log);
   this->loader_tip_enabled =
       get_config_or_default(config, parsed, "graphics", "loader_tip_enabled", DCG::loader_tip_enabled, write_log);
 
@@ -1338,7 +1340,9 @@ void Config::Load()
   parse_config_shortcut(config, parsed, "show_qtrials", GameFunction::ShowQTrials, DCSH::show_qtrials);
   parse_config_shortcut(config, parsed, "show_refinery", GameFunction::ShowRefinery, DCSH::show_refinery);
   parse_config_shortcut(config, parsed, "show_ships", GameFunction::ShowShips, DCSH::show_ships);
-  parse_config_shortcut(config, parsed, "show_shipconstruction", GameFunction::ShowShipConstruction, DCSH::show_shipconstruction);
+  parse_config_shortcut(config, parsed, "show_shipconstruction", GameFunction::ShowShipConstruction,
+                        DCSH::show_shipconstruction);
+  parse_config_shortcut(config, parsed, "show_shipswap", GameFunction::ShowShipSwap, DCSH::show_shipswap);
   parse_config_shortcut(config, parsed, "show_shields", GameFunction::ShowShields, DCSH::show_shields);
   parse_config_shortcut(config, parsed, "show_battlelogs", GameFunction::ShowBattlelogs, DCSH::show_battlelogs);
   parse_config_shortcut(config, parsed, "show_stationexterior", GameFunction::ShoWStationExterior,
