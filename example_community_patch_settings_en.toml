@@ -685,6 +685,9 @@ auto_open_bulk_claim_flyout = false
 # Prevent "escape" from prompting to exit the game
 disable_escape_exit = true
 
+# ⚠️ EXPERIMENTAL: Show only the first ad/interstitial popup after the game starts, then suppress the rest
+only_show_first_popup = false
+
 # Maximum gap in milliseconds between Escape presses that opens the exit prompt; 0 disables double-tap exit
 disable_escape_exit_timer = 0
 
@@ -775,34 +778,29 @@ pinned_ships = ""
 # Subgroup: HUD
 # -------------
 
-# HUD visibility mode: auto, show, or hide
-#   "auto" - Use the game's default visibility behaviour
-#   "show" - Always show this HUD item
-#   "hide" - Always hide this HUD item
-hud_daily_goals = "auto"
 
-# HUD visibility mode: auto, show, or hide
+# HUD visibility mode: auto, always, or never
 #   "auto" - Use the game's default visibility behaviour
-#   "show" - Always show this HUD item
-#   "hide" - Always hide this HUD item
+#   "always" - Always show this HUD item
+#   "never" - Always hide this HUD item
 hud_field_training = "auto"
 
-# HUD visibility mode: auto, show, or hide
+# HUD visibility mode: auto, always, or never
 #   "auto" - Use the game's default visibility behaviour
-#   "show" - Always show this HUD item
-#   "hide" - Always hide this HUD item
+#   "always" - Always show this HUD item
+#   "never" - Always hide this HUD item
 hud_missions = "auto"
 
-# HUD visibility mode: auto, show, or hide
+# HUD visibility mode: auto, always, or never
 #   "auto" - Use the game's default visibility behaviour
-#   "show" - Always show this HUD item
-#   "hide" - Always hide this HUD item
+#   "always" - Always show this HUD item
+#   "never" - Always hide this HUD item
 hud_outposts = "auto"
 
-# HUD visibility mode: auto, show, or hide
+# HUD visibility mode: auto, always, or never
 #   "auto" - Use the game's default visibility behaviour
-#   "show" - Always show this HUD item
-#   "hide" - Always hide this HUD item
+#   "always" - Always show this HUD item
+#   "never" - Always hide this HUD item
 hud_q_trials = "auto"
 
 # Subgroup: Options
