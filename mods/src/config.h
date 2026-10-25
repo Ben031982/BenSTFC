@@ -28,6 +28,7 @@ public:
     Jobs,
     Missions,
     Officer,
+    Profile,
     Research,
     Resources,
     Ships,
@@ -56,6 +57,7 @@ public:
   bool jobs             = false;
   bool missions         = false;
   bool officers         = false;
+  bool profile          = false;
   bool research         = true;
   bool resources        = false;
   bool ships            = false;
@@ -79,6 +81,7 @@ constexpr std::array SyncOptions{
     SyncConfig::Option{SyncConfig::Type::Jobs, "job", "jobs", &SyncConfig::jobs},
     SyncConfig::Option{SyncConfig::Type::Missions, "mission", "missions", &SyncConfig::missions},
     SyncConfig::Option{SyncConfig::Type::Officer, "officer", "officers", &SyncConfig::officers},
+    SyncConfig::Option{SyncConfig::Type::Profile, "profile", "profile", &SyncConfig::profile},
     SyncConfig::Option{SyncConfig::Type::Research, "research", "research", &SyncConfig::research},
     SyncConfig::Option{SyncConfig::Type::Resources, "resource", "resources", &SyncConfig::resources},
     SyncConfig::Option{SyncConfig::Type::Ships, "ship", "ships", &SyncConfig::ships},
@@ -188,6 +191,7 @@ public:
   bool  use_out_of_dock_power;
   float system_pan_momentum;
   float system_pan_momentum_falloff;
+  bool disable_target_camera_lock;
 
   float keyboard_zoom_speed;
   int   select_timer;
@@ -236,6 +240,7 @@ public:
   NotificationSound alert_armada_battle_lost = NotificationSound::None;
   bool                     auto_open_bulk_claim_flyout;
   bool                     auto_confirm_ft_upgrade;
+  bool                     forbidden_tech_ship_name;
   bool                     auto_confirm_reveal_ability;
   bool                     auto_confirm_alliance_contribution;
 
@@ -307,6 +312,7 @@ public:
   bool installLoadingTipHooks;
   bool installDoubleClickAssignShipHooks;
   bool installForbiddenTechConfirmationHooks;
+  bool installForbiddenTechShipNameHooks;
   bool installRevealConfirmationHooks;
   bool installInstantWarpConfirmationHooks;
   bool installAudioEventHooks;

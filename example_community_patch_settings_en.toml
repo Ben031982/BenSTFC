@@ -293,6 +293,7 @@ chattitledisplayhooks = true
 dailyfactionbulkclaimhooks = true
 doubleclickassignshiphooks = true
 forbiddentechconfirmhooks = true
+forbiddentechshipnamehooks = true
 freeresizehooks = true
 galacticanomalytimerhooks = true
 game_version = true
@@ -733,6 +734,9 @@ only_show_first_popup = false
 # Show the newest Haven help-history entries first.
 reverse_haven_history = true
 
+# Show the equipped ship below the Forbidden Tech header, including ships without a dock.
+forbidden_tech_ship_name = true
+
 # Subgroup: Auto Confirm
 # ----------------------
 
@@ -939,6 +943,10 @@ missions = true
 
 # Do you want to sync owned officer data?
 officers = true
+
+# Do you want to sync your own player profile (level, XP, Power, Haven unlocked)?
+# Only your own record is sent, never other players'.
+profile = false
 
 # Do you want to sync research data?
 research = true

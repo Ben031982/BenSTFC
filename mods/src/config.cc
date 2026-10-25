@@ -1013,6 +1013,8 @@ void Config::Load()
       get_config_or_default(config, parsed, "patches", "doubleclickassignshiphooks", DCP::doubleclickassignshiphooks, write_config);
   this->installForbiddenTechConfirmationHooks =
       get_config_or_default(config, parsed, "patches", "forbiddentechconfirmhooks", DCP::forbiddentechconfirmhooks, write_config);
+  this->installForbiddenTechShipNameHooks = get_config_or_default(
+      config, parsed, "patches", "forbiddentechshipnamehooks", DCP::forbiddentechshipnamehooks, write_config);
   this->installRevealConfirmationHooks =
       get_config_or_default(config, parsed, "patches", "revealconfirmhooks", DCP::revealconfirmhooks, write_config);
   this->installQueueAddressGuardHooks = get_config_or_default(
@@ -1107,6 +1109,8 @@ void Config::Load()
 
   this->system_pan_momentum_falloff = get_config_or_default(config, parsed, "graphics", "system_pan_momentum_falloff",
                                                             DCG::system_pan_momentum_falloff, write_log);
+  this->disable_target_camera_lock = get_config_or_default(config, parsed, "graphics", "disable_target_camera_lock",
+                                                         DCG::disable_target_camera_lock, write_log);
   this->borderless_fullscreen =
       get_config_or_default(config, parsed, "graphics", "borderless_fullscreen", DCG::borderless_fullscreen, write_log);
   this->transition_time =
@@ -1215,6 +1219,8 @@ void Config::Load()
   this->auto_confirm_ft_upgrade =
       get_config_or_default(config, parsed, "ui", "auto_confirm_ft_upgrade",
                                                         DCU::auto_confirm_ft_upgrade, write_config);
+  this->forbidden_tech_ship_name = get_config_or_default(
+      config, parsed, "ui", "forbidden_tech_ship_name", DCU::forbidden_tech_ship_name, write_config);
   this->auto_confirm_reveal_ability =
       get_config_or_default(config, parsed, "ui", "auto_confirm_reveal_ability",
                                                         DCU::auto_confirm_reveal_ability, write_config);
