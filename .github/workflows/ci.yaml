@@ -281,7 +281,7 @@ jobs:
     needs: build-win
     if: >-
       github.event_name == 'push' &&
-      github.repository == 'netniV/stfc-mod' &&
+      github.repository == 'STFC-Mod/mod' &&
       github.ref_protected &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: windows-2025-vs2026

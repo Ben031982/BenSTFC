@@ -1595,7 +1595,7 @@ void Config::Load()
             << " (Release)"
 #endif
 
-            << "\n\nPlease see https://github.com/netniv/stfc-mod for latest configuration help, examples and future "
+            << "\n\nPlease see https://github.com/STFC-Mod/mod for latest configuration help, examples and future "
                "releases\n"
             << "or visit the STFC Community Mod discord server at https://discord.gg/PrpHgs7Vjs\n\n";
 }
