@@ -128,7 +128,7 @@ __int64 il2cpp_init_hook(auto original, const char* domain_name)
   spdlog::info("");
 #endif
 
-  spdlog::info("Please see https://github.com/netniv/stfc-mod for latest configuration help,");
+  spdlog::info("Please see https://github.com/STFC-Mod/mod for latest configuration help,");
   spdlog::info("examples and future releases, or visit the STFC Community Mod discord server");
   spdlog::info("at https://discord.gg/PrpHgs7Vjs");
   spdlog::info("");
