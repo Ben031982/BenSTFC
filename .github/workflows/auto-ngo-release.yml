@@ -5,7 +5,7 @@ on:
     # Check hourly for a new official netniV release.
     - cron: "17 * * * *"
 
-    # Keep dev synchronized once per day even when no new release exists.
+    # Keep dev synchronized once per day even when no new release exists. test
     - cron: "0 6 * * *"
       timezone: "Europe/Berlin"
 
