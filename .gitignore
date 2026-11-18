@@ -1,6 +1,7 @@
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+!.vscode/tasks.json
 .vs/
 /.idea/
 /out/
@@ -13,13 +14,21 @@ version.aps
 *.vars
 debug.log
 /app/
-/.xmake/
-/vsxmake*/
 .DS_Store
 /.localassets/*
 
 # Generated Info.plist files (generated from templates)
 **/Info.plist
-mods/.xmake
 Analyse-GameAssembly.ps1
 assets/LoadingScreens/*.psd
+
+# zig
+/zig-out/
+/.zig-cache/
+/zig-pkg/
+
+# older build artifacts
+/mods/
+/.xmake/
+/vsxmake2022/
+/zig-build-error.log

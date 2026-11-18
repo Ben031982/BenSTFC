@@ -5,7 +5,7 @@ on:
     # Check hourly for a new official netniV release.
     - cron: "17 * * * *"
 
-    # Keep dev synchronized once per day even when no new release exists. test
+    # Keep dev synchronized once per day even when no new release exists.
     - cron: "0 6 * * *"
       timezone: "Europe/Berlin"
 
@@ -16,11 +16,13 @@ permissions:
   actions: read
 
 env:
-  # netniV hat nach v1.1.10.0 das Projekt auf einen Zig-Build umgestellt (src/ statt mods/,
-  # kein xmake mehr). Der NGO-Build haengt noch an der alten Struktur, deshalb wird nur bis
-  # zu diesem netniV-Tag synchronisiert und gebaut. Zum Aufheben: Branding auf die neue
-  # Struktur portieren und hier wieder netniV/dev bzw. das neueste Release verwenden.
-  UPSTREAM_SYNC_REF: "v1.1.10.0"
+  # Upstream (netniV/stfc-mod was transferred to STFC-Mod/mod).
+  UPSTREAM_REPO: "STFC-Mod/mod"
+
+  # Official upstream releases that never get an automatic NGO release.
+  # v1.1.10.0 is the last pre-Zig release; dev is already newer, so an NGO
+  # build under that name would be mislabeled. Space-separated list.
+  NGO_SKIP_UPSTREAM_RELEASES: "v1.1.10.0"
 
 concurrency:
   group: sync-netniv-and-build-ngo-release
@@ -50,9 +52,9 @@ jobs:
           set -euo pipefail
 
           if git remote get-url upstream >/dev/null 2>&1; then
-            git remote set-url upstream https://github.com/netniV/stfc-mod.git
+            git remote set-url upstream "https://github.com/$UPSTREAM_REPO.git"
           else
-            git remote add upstream https://github.com/netniV/stfc-mod.git
+            git remote add upstream "https://github.com/$UPSTREAM_REPO.git"
           fi
 
           git fetch upstream dev --tags
@@ -66,8 +68,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Gepinnt, siehe UPSTREAM_SYNC_REF oben (statt: releases/latest).
-          upstream_tag="$UPSTREAM_SYNC_REF"
+          upstream_tag="$(gh api "repos/$UPSTREAM_REPO/releases/latest" --jq '.tag_name')"
 
           if [[ -z "$upstream_tag" || "$upstream_tag" == "null" ]]; then
             echo "::error::Could not determine the latest official netniV release tag."
@@ -76,7 +77,7 @@ jobs:
 
           ngo_tag="${upstream_tag}-ngo.1"
 
-          echo "Pinned netniV release: $upstream_tag"
+          echo "Latest official netniV release: $upstream_tag"
           echo "Expected NGO release tag: $ngo_tag"
 
           echo "upstream_tag=$upstream_tag" >> "$GITHUB_OUTPUT"
@@ -90,7 +91,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git ls-remote --exit-code --tags origin "refs/tags/$NGO_TAG" >/dev/null 2>&1; then
+          upstream_tag="${NGO_TAG%-ngo.*}"
+
+          if [[ " $NGO_SKIP_UPSTREAM_RELEASES " == *" $upstream_tag "* ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "netniV $upstream_tag is on the skip list. No automatic NGO release."
+          elif git ls-remote --exit-code --tags origin "refs/tags/$NGO_TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "NGO tag $NGO_TAG already exists."
           else
@@ -135,12 +141,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git merge-base --is-ancestor "$UPSTREAM_SYNC_REF" HEAD; then
+          if git merge-base --is-ancestor upstream/dev HEAD; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "BenSTFC/dev already contains netniV $UPSTREAM_SYNC_REF."
+            echo "BenSTFC/dev already contains netniV/dev."
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "netniV $UPSTREAM_SYNC_REF is not yet merged."
+            echo "netniV/dev has new commits."
           fi
 
       - name: Merge upstream safely and preserve NGO branding
@@ -151,19 +157,12 @@ jobs:
 
           pre_merge_sha="$(git rev-parse HEAD)"
 
+          # NGO-owned images. zig/mod.zig embeds them at build time, so no
+          # generated headers need to be kept in sync anymore.
           protected_files=(
             "assets/loadingscreen.png"
-            "assets/stfc-mod-logo-fullsize.png"
             "assets/stfc-mod-logo.png"
-            "mods/src/patches/parts/loading.png"
-          )
-
-          # Generated headers: "header|source image|C symbol".
-          # They are always rebuilt from the protected NGO images above,
-          # so upstream changes to them must never block the sync.
-          generated_headers=(
-            "mods/src/patches/parts/embedded_loading_image.h|assets/loadingscreen.png|g_embeddedLoadingImage"
-            "mods/src/patches/parts/embedded_logo_image.h|assets/stfc-mod-logo.png|g_embeddedLogoImage"
+            "assets/stfc-mod-logo-fullsize.png"
           )
 
           is_protected_file() {
@@ -175,18 +174,12 @@ jobs:
               fi
             done
 
-            for entry in "${generated_headers[@]}"; do
-              if [[ "$file" == "${entry%%|*}" ]]; then
-                return 0
-              fi
-            done
-
             return 1
           }
 
-          echo "Merging netniV $UPSTREAM_SYNC_REF into BenSTFC/dev..."
+          echo "Merging netniV/dev into BenSTFC/dev..."
 
-          if ! git merge "$UPSTREAM_SYNC_REF" --no-edit --no-ff --no-commit; then
+          if ! git merge upstream/dev --no-edit --no-ff --no-commit; then
             conflicts="$(git diff --name-only --diff-filter=U)"
 
             echo "Merge conflicts detected:"
@@ -214,40 +207,6 @@ jobs:
             fi
           done
 
-          # Rebuild the embedded image headers from the (restored) NGO images.
-          # Same format as embed_image() in mods/xmake.lua.
-          for entry in "${generated_headers[@]}"; do
-            IFS='|' read -r header source symbol <<< "$entry"
-
-            if [[ ! -f "$source" ]]; then
-              echo "::error::Missing source image $source for $header"
-              git merge --abort || true
-              exit 1
-            fi
-
-            echo "Regenerating $header from NGO image $source"
-            python3 - "$source" "$header" "$symbol" <<'PY'
-          import sys
-          src, dst, sym = sys.argv[1:4]
-          data = open(src, "rb").read()
-          size = len(data)
-          parts = []
-          for i, b in enumerate(data, 1):
-              parts.append("0x%02X" % b)
-              if i < size:
-                  parts.append(", ")
-              if i % 16 == 0:
-                  parts.append("\n")
-          with open(dst, "w", newline="\n") as out:
-              out.write("#pragma once\n\n")
-              out.write("static const unsigned char %s[] = {\n" % sym)
-              out.write("".join(parts))
-              out.write("\n};\n\n")
-              out.write("static const size_t %s_SIZE = %d;\n" % (sym, size))
-          PY
-            git add "$header"
-          done
-
           remaining_conflicts="$(git diff --name-only --diff-filter=U)"
 
           if [[ -n "$remaining_conflicts" ]]; then
@@ -268,12 +227,12 @@ jobs:
           echo "Git status:"
           git status --short
 
-          if ! git merge-base --is-ancestor "$UPSTREAM_SYNC_REF" HEAD; then
-            echo "::error::netniV $UPSTREAM_SYNC_REF is not contained in the resulting BenSTFC/dev branch."
+          if ! git merge-base --is-ancestor upstream/dev HEAD; then
+            echo "::error::netniV/dev is not contained in the resulting BenSTFC/dev branch."
             exit 1
           fi
 
-          echo "netniV $UPSTREAM_SYNC_REF successfully synchronized with BenSTFC/dev."
+          echo "netniV/dev successfully synchronized with BenSTFC/dev."
           echo "Current HEAD: $(git rev-parse HEAD)"
 
       - name: Push updated dev branch
@@ -307,7 +266,8 @@ jobs:
 
           echo "Waiting for Build workflow for commit $HEAD_SHA..."
 
-          for attempt in $(seq 1 60); do
+          # Up to 60 minutes; a Zig build without warm caches can take a while.
+          for attempt in $(seq 1 120); do
             run_id="$(
               gh api \
                 "/repos/${{ github.repository }}/actions/runs?head_sha=$HEAD_SHA&per_page=100" \
@@ -316,7 +276,7 @@ jobs:
             )"
 
             if [[ -z "$run_id" ]]; then
-              echo "[$attempt/60] Build run not visible yet. Waiting 30 seconds..."
+              echo "[$attempt/120] Build run not visible yet. Waiting 30 seconds..."
               sleep 30
               continue
             fi
@@ -324,7 +284,7 @@ jobs:
             status="$(gh api "/repos/${{ github.repository }}/actions/runs/$run_id" --jq '.status')"
             conclusion="$(gh api "/repos/${{ github.repository }}/actions/runs/$run_id" --jq '.conclusion // ""')"
 
-            echo "[$attempt/60] Build run $run_id: status=$status conclusion=$conclusion"
+            echo "[$attempt/120] Build run $run_id: status=$status conclusion=$conclusion"
 
             if [[ "$status" == "completed" ]]; then
               if [[ "$conclusion" == "success" ]]; then
@@ -362,5 +322,4 @@ jobs:
       - name: Release status
         if: steps.existing_release.outputs.exists == 'true'
         run: |
-          echo "The latest official netniV release already has a corresponding NGO release tag."
-          echo "No new NGO release is required."
+          echo "No new NGO release is required (NGO tag exists or the netniV release is on the skip list)."
