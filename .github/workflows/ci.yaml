@@ -24,13 +24,12 @@ jobs:
       - uses: actions/checkout@v7
       - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
-          version: ${{ env.ZIG_VERSION }}
+          # NGO fork: without upstream's STFC_WINDOWS_TOOLCHAIN_URL (pinned MSVC 14.50) the runner's MSVC 14.52 is
+          # used, whose STL requires Clang 22. Zig 0.17 ships Clang 22; the project supports Zig 0.16 and 0.17.
+          version: "0.17.0"
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-          # NGO fork: no STFC_WINDOWS_TOOLCHAIN_URL here, so the runner's MSVC is used. Pin it to 14.50 (the
-          # version upstream's sysroot uses); 14.52's STL requires Clang 22, newer than Zig 0.16's.
-          toolset: "14.50"
       - name: Stamp commit hash
         run: python scripts/stamp-version-hash.py "${{ github.sha }}"
       - name: Provision pinned sysroot when configured
