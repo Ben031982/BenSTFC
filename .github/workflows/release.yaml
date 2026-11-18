@@ -1,9 +1,9 @@
-name: Create Release
+name: Publish NGO Release from Tag
 
 on:
   push:
     tags:
-      - "v*" # v1.1.10.0 or v1.1.11.beta.1
+      - "v*-ngo.*" # v1.1.11.0-ngo.1
 
 permissions:
   contents: write
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   create-release:
-    name: Create Release
+    name: Publish NGO Release from Tag
     runs-on: ubuntu-24.04
 
     steps:
@@ -19,17 +19,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Require version on its release branch
+      # NGO tags (vX.Y.Z.P-ngo.N) are always cut from dev. The upstream
+      # tag policy in scripts/release-tag-hook.sh rejects the -ngo suffix,
+      # so it is not used here.
+      - name: Require NGO tag on dev
         id: release_branch
         shell: bash
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          branch=$(bash scripts/release-tag-hook.sh --branch-for-tag "$RELEASE_TAG")
-          git fetch --no-tags origin \
-            '+refs/heads/main:refs/remotes/origin/main' \
-            '+refs/heads/dev:refs/remotes/origin/dev'
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?-ngo\.[0-9]+$ ]]; then
+            echo "::error::$RELEASE_TAG is not an NGO release tag (expected e.g. v1.1.11.0-ngo.1)."
+            exit 1
+          fi
+          branch=dev
+          git fetch --no-tags origin '+refs/heads/dev:refs/remotes/origin/dev'
           commit=$(git rev-parse 'HEAD^{commit}')
           if ! git merge-base --is-ancestor "$commit" "refs/remotes/origin/$branch"; then
             echo "::error::$RELEASE_TAG must point to a commit on $branch. Merge the PR before tagging."
@@ -162,14 +167,61 @@ jobs:
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Create the release and upload every release asset in one action.
-      - name: Create Release
+      # For NGO patch releases (.2, .3, ...), inherit the manually enriched
+      # release description from the matching .1 release.
+      - name: Prepare Release Notes
+        id: release-notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$RELEASE_TAG" =~ ^(.+-ngo\.)[0-9]+$ ]]; then
+            ngo_revision="${RELEASE_TAG##*.}"
+
+            if (( ngo_revision > 1 )); then
+              base_tag="${BASH_REMATCH[1]}1"
+
+              echo "NGO revision is $ngo_revision. Inheriting release notes from $base_tag..."
+
+              if ! gh api \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/${{ github.repository }}/releases/tags/$base_tag" \
+                --jq '.body // ""' \
+                > inherited-release-notes.md; then
+                echo "::error::Could not read release notes from $base_tag."
+                exit 1
+              fi
+
+              if [[ ! -s inherited-release-notes.md ]]; then
+                echo "::error::Release $base_tag has no release description to inherit."
+                exit 1
+              fi
+
+              echo "inherit=true" >> "$GITHUB_OUTPUT"
+              echo "body_file=inherited-release-notes.md" >> "$GITHUB_OUTPUT"
+              echo "Inherited release notes from $base_tag."
+              exit 0
+            fi
+          fi
+
+          echo "inherit=false" >> "$GITHUB_OUTPUT"
+          echo "body_file=" >> "$GITHUB_OUTPUT"
+          echo "Using automatically generated GitHub release notes."
+
+      # Create or update the release and upload every release asset.
+      - name: Publish NGO Release
         uses: ncipollo/release-action@v1
         with:
+          allowUpdates: true
+
           tag: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
 
-          generateReleaseNotes: true
+          generateReleaseNotes: ${{ steps.release-notes.outputs.inherit != 'true' }}
+          bodyFile: ${{ steps.release-notes.outputs.body_file }}
           prerelease: ${{ steps.check-prerelease.outputs.prerelease }}
 
           artifactErrorsFailBuild: true
