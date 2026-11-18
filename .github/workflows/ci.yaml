@@ -24,14 +24,56 @@ jobs:
       - uses: actions/checkout@v7
       - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
-          # NGO fork: without upstream's STFC_WINDOWS_TOOLCHAIN_URL (pinned MSVC 14.50) the runner's MSVC 14.52 is
-          # used, whose STL requires Clang 22. Zig 0.17 ships Clang 22; the project supports Zig 0.16 and 0.17.
-          version: "0.17.0"
+          version: ${{ env.ZIG_VERSION }}
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
       - name: Stamp commit hash
         run: python scripts/stamp-version-hash.py "${{ github.sha }}"
+      # NGO fork: upstream fetches its pinned MSVC 14.50 sysroot from STFC_WINDOWS_TOOLCHAIN_URL, which this fork
+      # does not have. The runner's default MSVC (14.52) needs Clang 22, newer than Zig 0.16's. So install the
+      # MSVC 14.50 component and lay it out where zig/toolchains.zig looks for the pinned sysroot
+      # (.cache/toolchain/windows-msvc/<version>, with msvc/ and winsdk/), using junctions to the installed files.
+      - name: "NGO: provision MSVC 14.50 sysroot from the runner"
+        if: ${{ vars.STFC_WINDOWS_TOOLCHAIN_URL == '' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $pin = (Select-String -Path zig/toolchains.zon -Pattern '\.version = "(msvc-[^"]+)"').Matches[0].Groups[1].Value
+          $sdkVersion = ($pin -split '_sdk-')[1]
+          Write-Host "Pinned toolchain: $pin (Windows SDK $sdkVersion)"
+
+          $installerDir = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+          $vs = & "$installerDir\vswhere.exe" -latest -products * -property installationPath
+          $installArgs = @('/c', 'vs_installer.exe', 'modify', '--installPath', "`"$vs`"",
+            '--add', 'Microsoft.VisualStudio.Component.VC.14.50.18.0.x86.x64',
+            '--quiet', '--norestart', '--nocache')
+          $process = Start-Process -FilePath cmd.exe -ArgumentList $installArgs -WorkingDirectory $installerDir `
+            -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -notin 0, 3010) { throw "Visual Studio installer failed with exit code $($process.ExitCode)" }
+
+          $msvc = Get-ChildItem "$vs\VC\Tools\MSVC" -Directory | Where-Object Name -like '14.50.*' |
+            Sort-Object Name | Select-Object -Last 1
+          if (-not $msvc) { throw "MSVC 14.50 is not installed after the installer ran." }
+          Write-Host "Using MSVC $($msvc.Name)"
+
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
+          $root = ".cache\toolchain\windows-msvc\$pin"
+          foreach ($dir in 'msvc\lib', 'winsdk\include', 'winsdk\lib\ucrt', 'winsdk\lib\um') {
+            New-Item -ItemType Directory -Force -Path "$root\$dir" | Out-Null
+          }
+          function Link($path, $target) {
+            if (-not (Test-Path $target)) { throw "Missing $target" }
+            New-Item -ItemType Junction -Path $path -Target $target | Out-Null
+          }
+          Link "$root\msvc\include" "$($msvc.FullName)\include"
+          Link "$root\msvc\lib\x64" "$($msvc.FullName)\lib\x64"
+          foreach ($dir in 'ucrt', 'um', 'shared', 'winrt', 'cppwinrt') {
+            Link "$root\winsdk\include\$dir" "$kits\Include\$sdkVersion\$dir"
+          }
+          Link "$root\winsdk\lib\ucrt\x64" "$kits\Lib\$sdkVersion\ucrt\x64"
+          Link "$root\winsdk\lib\um\x64" "$kits\Lib\$sdkVersion\um\x64"
       - name: Provision pinned sysroot when configured
         shell: pwsh
         env:
