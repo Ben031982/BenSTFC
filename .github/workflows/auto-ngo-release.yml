@@ -15,6 +15,13 @@ permissions:
   contents: read
   actions: read
 
+env:
+  # netniV hat nach v1.1.10.0 das Projekt auf einen Zig-Build umgestellt (src/ statt mods/,
+  # kein xmake mehr). Der NGO-Build haengt noch an der alten Struktur, deshalb wird nur bis
+  # zu diesem netniV-Tag synchronisiert und gebaut. Zum Aufheben: Branding auf die neue
+  # Struktur portieren und hier wieder netniV/dev bzw. das neueste Release verwenden.
+  UPSTREAM_SYNC_REF: "v1.1.10.0"
+
 concurrency:
   group: sync-netniv-and-build-ngo-release
   cancel-in-progress: false
@@ -59,9 +66,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          upstream_tag="$(
-            gh api /repos/netniV/stfc-mod/releases/latest --jq '.tag_name'
-          )"
+          # Gepinnt, siehe UPSTREAM_SYNC_REF oben (statt: releases/latest).
+          upstream_tag="$UPSTREAM_SYNC_REF"
 
           if [[ -z "$upstream_tag" || "$upstream_tag" == "null" ]]; then
             echo "::error::Could not determine the latest official netniV release tag."
@@ -70,7 +76,7 @@ jobs:
 
           ngo_tag="${upstream_tag}-ngo.1"
 
-          echo "Latest netniV release: $upstream_tag"
+          echo "Pinned netniV release: $upstream_tag"
           echo "Expected NGO release tag: $ngo_tag"
 
           echo "upstream_tag=$upstream_tag" >> "$GITHUB_OUTPUT"
@@ -129,12 +135,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git merge-base --is-ancestor upstream/dev HEAD; then
+          if git merge-base --is-ancestor "$UPSTREAM_SYNC_REF" HEAD; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "BenSTFC/dev already contains all commits from netniV/dev."
+            echo "BenSTFC/dev already contains netniV $UPSTREAM_SYNC_REF."
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "New commits found on netniV/dev."
+            echo "netniV $UPSTREAM_SYNC_REF is not yet merged."
           fi
 
       - name: Merge upstream safely and preserve NGO branding
@@ -178,9 +184,9 @@ jobs:
             return 1
           }
 
-          echo "Merging netniV/dev into BenSTFC/dev..."
+          echo "Merging netniV $UPSTREAM_SYNC_REF into BenSTFC/dev..."
 
-          if ! git merge upstream/dev --no-edit --no-ff --no-commit; then
+          if ! git merge "$UPSTREAM_SYNC_REF" --no-edit --no-ff --no-commit; then
             conflicts="$(git diff --name-only --diff-filter=U)"
 
             echo "Merge conflicts detected:"
@@ -262,12 +268,12 @@ jobs:
           echo "Git status:"
           git status --short
 
-          if ! git merge-base --is-ancestor upstream/dev HEAD; then
-            echo "::error::netniV/dev is not contained in the resulting BenSTFC/dev branch."
+          if ! git merge-base --is-ancestor "$UPSTREAM_SYNC_REF" HEAD; then
+            echo "::error::netniV $UPSTREAM_SYNC_REF is not contained in the resulting BenSTFC/dev branch."
             exit 1
           fi
 
-          echo "netniV/dev successfully synchronized with BenSTFC/dev."
+          echo "netniV $UPSTREAM_SYNC_REF successfully synchronized with BenSTFC/dev."
           echo "Current HEAD: $(git rev-parse HEAD)"
 
       - name: Push updated dev branch
