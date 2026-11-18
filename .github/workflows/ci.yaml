@@ -28,6 +28,9 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+          # NGO fork: no STFC_WINDOWS_TOOLCHAIN_URL here, so the runner's MSVC is used. Pin it to 14.50 (the
+          # version upstream's sysroot uses); 14.52's STL requires Clang 22, newer than Zig 0.16's.
+          toolset: "14.50"
       - name: Stamp commit hash
         run: python scripts/stamp-version-hash.py "${{ github.sha }}"
       - name: Provision pinned sysroot when configured
