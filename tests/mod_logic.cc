@@ -481,6 +481,12 @@ void WindowPlacement()
 
   toml::table effective;
   Check(Config::Parse(toml::table{}, effective, false)->graphics.remember_window, "window memory is on by default");
+  Check(Config::Parse(toml::table{}, effective, false)->graphics.background_fps == 15, "background fps default");
+  for (const auto* text : {"[graphics]\nbackground_fps = 3", "[graphics]\nbackground_fps = 500"})
+    Check(Config::Parse(toml::parse(text), effective, false)->graphics.background_fps == 15,
+          "an out-of-range background fps keeps the default");
+  Check(Config::Parse(toml::parse("[graphics]\nbackground_fps = 0"), effective, false)->graphics.background_fps == 0,
+        "0 turns the background cap off");
 }
 
 void UpstreamSettings()

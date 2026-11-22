@@ -228,6 +228,8 @@ public:
     bool              free_resize         = true;
     // Reopen the window where and as large as it was last time (Windows, windowed mode only).
     bool              remember_window     = true;
+    // At most this many frames a second while another program has the focus (Windows); 0 is off.
+    int32_t           background_fps      = 15;
     bool              allow_cursor        = true;
     float             keyboard_zoom_speed = 350.0f;
     // TODO(tashcan): read (with enable_experimental) but nothing applies it.

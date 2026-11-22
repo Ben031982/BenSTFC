@@ -255,6 +255,10 @@ free_resize = true
 # Windows only, and only in windowed mode. It is saved beside the vars file with the extension .window.
 remember_window = true
 
+# Frames per second while another program has the focus, from 5 to 120; 0 leaves the game's frame rate alone.
+# Saves CPU, GPU and fan noise. The game's own frame rate and vsync return when you switch back. Windows only.
+background_fps = 15
+
 # Show the remaining Galactic Anomaly time below Help All, Engage, and Claim
 galactic_anomaly_timer = false
 
