@@ -444,6 +444,19 @@ loader_defenses = [
   const auto* recorded = effective["graphics"]["loader_defenses"].as_array();
   Check(recorded && recorded->size() == 2, "the vars file lists the defenses used");
   Check(config->graphics.defense_timer, "the defense panel is on by default");
+  {
+    toml::table effective_scale;
+    Check(Config::Parse(toml::table{}, effective_scale, false)->graphics.defense_timer_scale == 1.5f,
+          "the defense panel is drawn larger by default");
+    Check(Config::Parse(toml::parse("[graphics]\ndefense_timer_scale = 2.0"), effective_scale, false)
+                  ->graphics.defense_timer_scale
+              == 2.0f,
+          "the defense panel takes its size");
+    Check(Config::Parse(toml::parse("[graphics]\ndefense_timer_scale = 9"), effective_scale, false)
+                  ->graphics.defense_timer_scale
+              == 1.5f,
+          "a defense panel size out of range keeps the default");
+  }
 
   defenses[1].level = 1;
   Check(DefensePanelText(defenses, at("27.11.2026 10:40"))

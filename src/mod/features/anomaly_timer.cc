@@ -200,6 +200,7 @@ auto&       defense_label = *new il2cpp::GcHandle;
 auto&       defense_panel = *new il2cpp::GcHandle;
 std::string defense_shown_text;
 bool        defense_below_anomaly = false;
+float       defense_placed_scale  = 0;
 
 constexpr float kDefensePanelWidth  = 270;
 constexpr float kDefensePanelHeight = 52;
@@ -256,6 +257,7 @@ unity::TMP_Text* CreateDefensePanel(unity::Transform* parent)
   defense_shown_text.clear();
   // Forces the first placement below.
   defense_below_anomaly = !anomaly_panel_shown;
+  defense_placed_scale  = 0;
   return label;
 }
 
@@ -291,6 +293,11 @@ void DefensePanelFrame()
     defense_below_anomaly = anomaly_panel_shown;
     panel->Place({0.5f, 0}, {0.5f, 0}, {0.5f, 1}, {kDefensePanelWidth, kDefensePanelHeight},
                  {0, anomaly_panel_shown ? -84.0f : -40.0f});
+  }
+  // Scaled around its top edge, so the gap to the panel above stays.
+  if (const float scale = graphics.defense_timer_scale; scale != defense_placed_scale) {
+    defense_placed_scale = scale;
+    panel->SetLocalScale({scale, scale, 1});
   }
   if (auto* object = label->ParentObject())
     object->SetActive(true);

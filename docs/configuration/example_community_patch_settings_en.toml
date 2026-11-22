@@ -269,6 +269,9 @@ mirror_space_timer = false
 # It also uses [patches] galacticanomalytimerhooks. The panel text is German.
 defense_timer = true
 
+# The size of the defense panel, from 0.5 to 3.0; 1.0 is the size of the timer panel above it
+defense_timer_scale = 1.5
+
 # After using a zoom preset it will be set as default zoom
 use_presets_as_default = true
 

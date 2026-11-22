@@ -787,6 +787,8 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Read("graphics", "galactic_anomaly_timer", g.galactic_anomaly_timer);
   r.Read("graphics", "mirror_space_timer", g.mirror_space_timer);
   r.Read("graphics", "defense_timer", g.defense_timer);
+  r.ReadValid("graphics", "defense_timer_scale", g.defense_timer_scale,
+              [](float v) { return std::isfinite(v) && v >= 0.5f && v <= 3.0f; });
 
   // [buffs]
   r.Read("buffs", "use_out_of_dock_power", buffs.use_out_of_dock_power);

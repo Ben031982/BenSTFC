@@ -287,6 +287,8 @@ public:
     bool        mirror_space_timer     = false;
     // A HUD panel with the next of loader_defenses and its countdown.
     bool defense_timer = true;
+    // Its size; 1 is the size of the anomaly panel above it.
+    float defense_timer_scale = 1.5f;
   } graphics;
 
   struct Buffs {
