@@ -381,6 +381,12 @@ const Feature kFreeResize{"FreeResize", &Config::Patches::freeresizehooks, Insta
 const Feature kCursor{"Cursor", &Config::Patches::testpatches, InstallCursor};
 const Feature kWindowMemory{"WindowMemory", nullptr, nullptr, WindowMemoryFrame};
 const Feature kBorderless{"Borderless", nullptr, nullptr, BorderlessFrame};
+
+bool GameWindowActive()
+{
+  auto* window = GameWindow();
+  return window && GetForegroundWindow() == window;
+}
 #else
 float WindowDpiScale(bool)
 { return 1.0f; }

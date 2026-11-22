@@ -392,6 +392,36 @@ std::vector<std::string> ReadFactions(Reader& reader)
 
 // A case-insensitive comma list of kBannerTypes names, or "All". The vars file gets the names that matched, in
 // catalog order.
+// [ui] fleet_notifications: a comma list of ship changes, written back in this order. Blank means none.
+FleetNotifications ReadFleetNotifications(Reader& reader)
+{
+  constexpr std::pair<std::string_view, bool FleetNotifications::*> kNames[] = {
+      {"repair", &FleetNotifications::repaired},       {"arrived", &FleetNotifications::arrived},
+      {"cargo_full", &FleetNotifications::cargo_full}, {"mining_done", &FleetNotifications::mining_done},
+      {"destroyed", &FleetNotifications::destroyed},
+  };
+  FleetNotifications wanted;
+  for (const auto& token : StrSplit(reader.Get<std::string>("ui", "fleet_notifications", ""), ',')) {
+    const auto text = AsciiStrToLower(StripAsciiWhitespace(token));
+    if (text.empty())
+      continue;
+    const auto found = std::ranges::find(kNames, text, &std::pair<std::string_view, bool FleetNotifications::*>::first);
+    if (found == std::end(kNames)) {
+      spdlog::warn("invalid config value ui.fleet_notifications: '{}'; ignoring it (expected repair, arrived, "
+                   "cargo_full, mining_done or destroyed)",
+                   text);
+      continue;
+    }
+    wanted.*found->second = true;
+  }
+  std::string recorded;
+  for (const auto& [name, member] : kNames)
+    if (wanted.*member)
+      recorded += (recorded.empty() ? "" : ", ") + std::string(name);
+  reader.Record("ui", "fleet_notifications", recorded);
+  return wanted;
+}
+
 std::vector<int> ReadBannerTypes(Reader& reader, std::string_view key)
 {
   auto wanted = StrSplit(reader.Get<std::string>("ui", key, ""), ',') | std::views::transform(AsciiStrToUpper)
@@ -838,6 +868,8 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Read("ui", "fleet_bar_compact", u.fleet_bar_compact);
   r.ReadValid("ui", "fleet_bar_scale", u.fleet_bar_scale,
               [](float v) { return std::isfinite(v) && v >= 0.5f && v <= 2.5f; });
+  u.fleet_notifications = ReadFleetNotifications(r);
+  r.Read("ui", "notify_only_in_background", u.notify_only_in_background);
 
   // [sync]
   auto sync = std::make_shared<Sync>();

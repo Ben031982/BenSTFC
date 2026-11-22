@@ -510,6 +510,39 @@ void FleetBar()
   for (const auto* text : {"[ui]\nfleet_bar_scale = 0.2", "[ui]\nfleet_bar_scale = 3.0"})
     Check(Config::Parse(toml::parse(text), effective, false)->ui.fleet_bar_scale == 1.0f,
           "a fleet bar scale outside 0.5 to 2.5 keeps the default");
+
+  const auto ship = [](Status status, std::optional<int32_t> cargo = std::nullopt) {
+    return Row{4, "U.S.S. Dauntless", status, std::nullopt, cargo, 77};
+  };
+  Check(Change(ship(Status::kRepairing), ship(Status::kDocked)) == Event::kRepaired, "a finished repair is reported");
+  Check(Change(ship(Status::kWarping), ship(Status::kIdle)) == Event::kArrived
+            && Change(ship(Status::kImpulsing), ship(Status::kMining)) == Event::kArrived,
+        "an end of warp or impulse is an arrival");
+  Check(!Change(ship(Status::kWarpCharging), ship(Status::kWarping)), "charging into warp is no arrival");
+  Check(Change(ship(Status::kMining, 95), ship(Status::kMining, 100)) == Event::kCargoFull
+            && !Change(ship(Status::kMining, 100), ship(Status::kMining, 100))
+            && !Change(ship(Status::kMining, 40), ship(Status::kMining, 41)),
+        "a full cargo hold is reported once");
+  Check(Change(ship(Status::kMining, 100), ship(Status::kIdle)) == Event::kMiningDone, "the end of mining is reported");
+  Check(Change(ship(Status::kMining), ship(Status::kDestroyed)) == Event::kDestroyed
+            && Change(ship(Status::kWarping), ship(Status::kDestroyed)) == Event::kDestroyed,
+        "a destroyed ship is reported");
+  Check(!Change(ship(Status::kMining), ship(Status::kBattling)) && !Change(ship(Status::kIdle), ship(Status::kIdle))
+            && !Change(ship(Status::kIdle), ship(Status::kUnknown))
+            && !Change(ship(Status::kDocked), ship(Status::kIdle)),
+        "fights, unchanged and unknown states and leaving the dock report nothing");
+  Check(EventText(Event::kRepaired) == "Reparatur fertig"
+            && NotificationTitle(ship(Status::kIdle)) == "4 U.S.S. Dauntless",
+        "a notification has the key and whole name, and German text");
+
+  const auto quiet = defaults->ui.fleet_notifications;
+  Check(!quiet.Any() && defaults->ui.notify_only_in_background,
+        "no fleet notifications by default, and notifications only in the background");
+  const auto chosen = Config::Parse(toml::parse("[ui]\nfleet_notifications = \"Repair, cargo_full, bogus\""), effective,
+                                    false)
+                          ->ui.fleet_notifications;
+  Check(chosen.repaired && chosen.cargo_full && !chosen.arrived && !chosen.mining_done && !chosen.destroyed,
+        "fleet notifications are chosen by name, and unknown names are left out");
 }
 
 void WindowPlacement()

@@ -82,6 +82,8 @@ Other options show the newest Haven help-history entries first, limit ads to the
 - Hide selected banner types or use the experimental global banner switch.
 - Send desktop notifications for selected banners on Windows.
 - Send Windows reminders before territory defenses, at the minutes listed in `[ui] defense_reminders`.
+- Send Windows notifications when a ship of the fleet bar finishes a repair, arrives, fills its cargo hold, stops mining or is destroyed, as chosen in `[ui] fleet_notifications`.
+- With `[ui] notify_only_in_background`, on by default, banner and fleet notifications only arrive while the game window is not in front.
 - Play optional victory, defeat, and Armada sounds on Windows and macOS.
 - Suppress named audio events, or use `All` to block named events that start or resume audio.
 - Log audio event names to help build a suppression list.

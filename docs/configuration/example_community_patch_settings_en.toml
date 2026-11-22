@@ -840,6 +840,14 @@ fleet_bar_compact = false
 # How large fleet_bar is drawn, from 0.5 to 2.5: 1.5 makes text and panel half as large again
 fleet_bar_scale = 1.0
 
+# Windows notifications when one of your ships 1 to 8 changes state (comma separated): repair (repair done), arrived
+# (warp or impulse ended), cargo_full (cargo hold full while mining), mining_done, destroyed. Blank means none. Also
+# while fleet_bar is hidden or off. German text.
+fleet_notifications = ""
+
+# Send notify_banner_types and fleet_notifications only while the game window is not in front (Windows)
+notify_only_in_background = true
+
 # Subgroup: Chat
 # --------------
 

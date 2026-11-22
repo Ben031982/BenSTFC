@@ -1,6 +1,8 @@
 // [ui] fleet_bar: a compact list of the fleet bar's ships, with status and remaining time, at the side of the system
-// and galaxy views. [shortcuts] toggle_fleet_bar hides and shows it. It only reads what the fleet bar already holds;
-// all Unity work runs on the frame tick, and there are no detours of its own.
+// and galaxy views. [shortcuts] toggle_fleet_bar hides and shows it. [ui] fleet_notifications sends a Windows
+// notification when one of those ships finishes a repair, arrives, fills its cargo hold, stops mining or is
+// destroyed. It only reads what the fleet bar already holds; all Unity work runs on the frame tick, and there are no
+// detours of its own.
 
 #include "config.h"
 #include "features/features.h"
@@ -44,6 +46,8 @@ float   fleet_bar_placed_scale   = 0;
 bool fleet_bar_hidden = false;
 // Ship names by localisation id: each lookup allocates a managed object.
 auto& fleet_bar_names = *new std::unordered_map<int64_t, std::string>;
+// Each fleet's row at the last tick, by fleet id, to see what changed.
+auto& fleet_bar_previous = *new std::unordered_map<int64_t, fleet_bar::Row>;
 
 // The sizes at [ui] fleet_bar_scale 1; the scale multiplies them all.
 constexpr std::size_t kFleetBarShips       = 8;
@@ -147,6 +151,7 @@ std::vector<fleet_bar::Row> FleetBarRows()
         .status        = FleetBarStatus(state),
         .remaining     = FleetBarRemaining(fleet, state, now),
         .cargo_percent = state == FleetState::Mining ? FleetBarCargo(fleet) : std::nullopt,
+        .fleet_id      = fleet->Id(),
     });
   }
   return rows;
@@ -234,6 +239,47 @@ void PlaceFleetBar(unity::RectTransform* panel, unity::TMP_Text* label, int32_t 
   label->SetFontSize(kFleetBarFontSize * scale);
 }
 
+#if _WIN32
+bool FleetNotificationWanted(const FleetNotifications& wanted, fleet_bar::Event event)
+{
+  using fleet_bar::Event;
+  switch (event) {
+  case Event::kRepaired:
+    return wanted.repaired;
+  case Event::kArrived:
+    return wanted.arrived;
+  case Event::kCargoFull:
+    return wanted.cargo_full;
+  case Event::kMiningDone:
+    return wanted.mining_done;
+  case Event::kDestroyed:
+    return wanted.destroyed;
+  }
+  return false;
+}
+
+// Compares each ship with the last tick. A ship seen for the first time only sets the baseline.
+void FleetBarNotify(const std::vector<fleet_bar::Row>& rows)
+{
+  const auto& ui = Config::Get().ui;
+  for (const auto& row : rows) {
+    auto [entry, added] = fleet_bar_previous.try_emplace(row.fleet_id, row);
+    if (added)
+      continue;
+    const auto event = fleet_bar::Change(entry->second, row);
+    entry->second    = row;
+    if (!event || !FleetNotificationWanted(ui.fleet_notifications, *event))
+      continue;
+    const auto title = fleet_bar::NotificationTitle(row);
+    const auto text  = std::string(fleet_bar::EventText(*event));
+    const bool quiet = ui.notify_only_in_background && GameWindowActive();
+    spdlog::info("[FleetBar] {}: {}{}", title, text, quiet ? " (game in front, no notification)" : "");
+    if (!quiet)
+      ShowDesktopNotification(title.c_str(), text);
+  }
+}
+#endif
+
 void FleetBarFrame()
 {
   const auto& config = Config::Get();
@@ -253,7 +299,18 @@ void FleetBarFrame()
                               ? ScreenManager::View<HudNavigationViewController>()
                               : nullptr;
   auto*      parent  = nav ? unity::CanvasRoot(nav->transform()) : nullptr;
-  const auto rows    = parent ? FleetBarRows() : std::vector<fleet_bar::Row>{};
+#if _WIN32
+  const bool notify = config.ui.fleet_notifications.Any();
+#else
+  const bool notify = false;
+#endif
+  auto rows = parent || notify ? FleetBarRows() : std::vector<fleet_bar::Row>{};
+#if _WIN32
+  if (notify)
+    FleetBarNotify(rows);
+#endif
+  if (!parent)
+    rows.clear();
 
   auto* label = fleet_bar_label.Get<unity::TMP_Text>();
   auto* panel = fleet_bar_panel.Get<unity::RectTransform>();

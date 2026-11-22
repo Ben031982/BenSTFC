@@ -102,6 +102,18 @@ enum class FleetBarSide {
   kRight,
 };
 
+// [ui] fleet_notifications: the changes of a ship's state that send a Windows notification.
+struct FleetNotifications {
+  bool repaired    = false;
+  bool arrived     = false;
+  bool cargo_full  = false;
+  bool mining_done = false;
+  bool destroyed   = false;
+
+  bool Any() const
+  { return repaired || arrived || cargo_full || mining_done || destroyed; }
+};
+
 enum class MissionHudVisibility {
   kAuto,
   kAlways,
@@ -364,6 +376,9 @@ public:
     bool         fleet_bar_compact = false;
     // How large the fleet bar is drawn, 0.5 to 2.5.
     float        fleet_bar_scale   = 1.0f;
+    FleetNotifications fleet_notifications;
+    // notify_banner_types and fleet_notifications stay quiet while the game window is in front.
+    bool notify_only_in_background = true;
   } ui;
 
   struct Sync {

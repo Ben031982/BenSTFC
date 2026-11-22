@@ -204,6 +204,8 @@ extern const Feature kFreeResize;
 extern const Feature kCursor;
 extern const Feature kWindowMemory;
 extern const Feature kBorderless;
+// Whether the game window is the one in front.
+bool GameWindowActive();
 #endif
 // The monitor's physical-to-logical pixel ratio on Windows; 1 elsewhere. Cached until `refresh`.
 float WindowDpiScale(bool refresh = false);

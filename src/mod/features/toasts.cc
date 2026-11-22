@@ -323,6 +323,8 @@ void Notify(Toast* toast)
   const auto& types = Config::Get().ui.notify_banner_types;
   if (!std::ranges::contains(types, std::to_underlying(state)))
     return;
+  if (Config::Get().ui.notify_only_in_background && GameWindowActive())
+    return;
   // notify_banner_types only holds states from the config catalog, and kTitles names every one of them.
   const auto title = std::ranges::find(kTitles, state, &std::pair<ToastState, const char*>::first);
   ShowWindowsNotification(title->second, NotificationBody(toast));

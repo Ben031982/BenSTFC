@@ -1,8 +1,8 @@
 #pragma once
 
 // The fleet list of [ui] fleet_bar, without touching the game so it can be tested: each ship's select key, name,
-// status, remaining time and cargo as one line of TextMeshPro rich text. The text is German, like the territory
-// defense panel.
+// status, remaining time and cargo as one line of TextMeshPro rich text, and the changes of state that
+// [ui] fleet_notifications reports. The text is German, like the territory defense panel.
 
 #include <algorithm>
 #include <cstddef>
@@ -40,6 +40,17 @@ struct Row {
   std::optional<int64_t> remaining;
   // How full the cargo hold is while mining.
   std::optional<int32_t> cargo_percent;
+  // The game's id of the fleet, which stays with the ship's slot across sessions.
+  int64_t                fleet_id = 0;
+};
+
+// The changes of state [ui] fleet_notifications can report.
+enum class Event {
+  kRepaired,
+  kArrived,
+  kCargoFull,
+  kMiningDone,
+  kDestroyed,
 };
 
 // Longer ship names are cut, so the columns stay in place.
@@ -171,6 +182,56 @@ inline std::string Line(const Row& row, bool compact)
     line += "<pos=80%><color=" + color + ">" + Timer(*row.remaining) + "</color>";
   return line;
 }
+
+inline bool Travelling(Status status)
+{ return status == Status::kWarpCharging || status == Status::kWarping || status == Status::kImpulsing; }
+
+// What a ship's change from `before` to `after` reports, if anything. A fight that interrupts a repair, a journey
+// or mining reports nothing until it ends.
+inline std::optional<Event> Change(const Row& before, const Row& after)
+{
+  if (before.status == Status::kUnknown || after.status == Status::kUnknown)
+    return std::nullopt;
+  if (before.status == after.status) {
+    const bool full     = after.cargo_percent && *after.cargo_percent >= 100;
+    const bool was_full = before.cargo_percent && *before.cargo_percent >= 100;
+    if (after.status == Status::kMining && full && !was_full)
+      return Event::kCargoFull;
+    return std::nullopt;
+  }
+  if (after.status == Status::kDestroyed)
+    return Event::kDestroyed;
+  if (after.status == Status::kBattling)
+    return std::nullopt;
+  if (before.status == Status::kRepairing)
+    return Event::kRepaired;
+  if (Travelling(before.status) && !Travelling(after.status))
+    return Event::kArrived;
+  if (before.status == Status::kMining)
+    return Event::kMiningDone;
+  return std::nullopt;
+}
+
+inline std::string_view EventText(Event event)
+{
+  switch (event) {
+  case Event::kRepaired:
+    return "Reparatur fertig";
+  case Event::kArrived:
+    return "angekommen";
+  case Event::kCargoFull:
+    return "Frachtraum voll";
+  case Event::kMiningDone:
+    return "Mining beendet";
+  case Event::kDestroyed:
+    return "zerstört";
+  }
+  return "";
+}
+
+// The notification's title: the select key and the ship's whole name.
+inline std::string NotificationTitle(const Row& row)
+{ return std::to_string(row.key) + " " + row.name; }
 
 inline std::string Text(std::span<const Row> rows, bool compact)
 {
