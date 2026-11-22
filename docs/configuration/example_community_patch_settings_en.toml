@@ -338,9 +338,10 @@ announcement_max_days = 7
 
 # Territory defenses, in your computer's local time. The next one replaces the welcome line on the first loading
 # screen and appears among the tips with a countdown; each disappears an hour after it starts.
-# time is "DD.MM. HH:MM", "DD.MM.YYYY HH:MM" or "YYYY-MM-DD HH:MM"; level is optional. The tip text is German.
+# time is a weekday and time that repeats every week, like "Fr 13:00" (Mo Di Mi Do Fr Sa So, or Mon to Sun), or one
+# date: "DD.MM. HH:MM", "DD.MM.YYYY HH:MM" or "YYYY-MM-DD HH:MM". level is optional. The tip text is German.
 # loader_defenses = [
-#   { system = "Aylus", level = 1, time = "27.11. 13:00" },
+#   { system = "Aylus", level = 1, time = "Fr 13:00" },
 #   { system = "Tazolka", level = 1, time = "27.11. 18:00" },
 # ]
 loader_defenses = []

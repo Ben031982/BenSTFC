@@ -378,7 +378,14 @@ void DefenseSchedule()
         "single digits, a year and extra spaces");
   Check(ParseDefenseTime("2026-11-28 14:00", parsed) && parsed.year == 2026 && parsed.month == 11 && parsed.day == 28,
         "an ISO defense date");
-  for (const auto* bad : {"", "27.11.", "Fr 13:00", "27.11. 24:00", "32.11. 13:00", "27.13. 13:00", "27.11. 13",
+  Check(ParseDefenseTime("Fr 13:00", parsed) && parsed.weekday == 5 && parsed.month == 0 && parsed.hour == 13,
+        "a weekly defense");
+  Check(ParseDefenseTime("sonntag 9:30", parsed) && parsed.weekday == 0 && ParseDefenseTime("Sat. 18:00", parsed)
+            && parsed.weekday == 6,
+        "weekdays in German or English, long or short");
+  Check(ParseDefenseTime("27.11. 13:00", parsed) && parsed.weekday == -1, "a date is no weekly defense");
+  for (const auto* bad : {"", "27.11.", "Fx 13:00", "Fr 25:00", "Fr", "27.11. 24:00",
+                          "32.11. 13:00", "27.13. 13:00", "27.11. 13",
                           "27.11. 13:00x", "-1.11. 13:00", "27.11.26 13:00"}) {
     LoaderDefense untouched;
     Check(!ParseDefenseTime(bad, untouched) && untouched.month == 0, "a malformed defense time is rejected");
@@ -418,6 +425,23 @@ void DefenseSchedule()
   defenses[1].level = 0;
   Check(DefenseTip(defenses, at("27.11.2026 13:30"))->starts_with("Gebietsverteidigung: Aylus läuft gerade"),
         "a defense without a level");
+
+  // 27.11.2026 is a Friday.
+  LoaderDefense weekly;
+  ParseDefenseTime("Fr 13:00", weekly);
+  Check(DefenseStart(weekly, at("25.11.2026 20:00")) == at("27.11.2026 13:00"), "a weekly defense later this week");
+  Check(DefenseStart(weekly, at("27.11.2026 13:30")) == at("27.11.2026 13:00"), "a weekly defense still running");
+  Check(DefenseStart(weekly, at("27.11.2026 14:00")) == at("04.12.2026 13:00"), "then the one a week later");
+  ParseDefenseTime("Do 23:30", weekly);
+  Check(DefenseStart(weekly, at("27.11.2026 00:10")) == at("26.11.2026 23:30"),
+        "a weekly defense running past midnight");
+  std::vector<LoaderDefense> week(2);
+  ParseDefenseTime("Sa 14:00", week[0]);
+  ParseDefenseTime("Fr 18:00", week[1]);
+  week[0].system = "Duportas";
+  week[1].system = "Tazolka";
+  Check(DefensePanelText(week, at("28.11.2026 15:30")) == "Verteidigung: Tazolka\nFr 18:00 Uhr, in 6 T 2 Std",
+        "after the last one of the week, the first one of the next");
 
   LoaderDefense new_year;
   ParseDefenseTime("02.01. 13:00", new_year);

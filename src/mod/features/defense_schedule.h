@@ -70,6 +70,38 @@ inline std::time_t LocalTime(int32_t year, const LoaderDefense& defense)
   return std::mktime(&local);
 }
 
+// 0 for Sunday to 6 for Saturday, from a German or English name or its short form, ignoring case.
+inline std::optional<int32_t> Weekday(std::string_view text)
+{
+  static constexpr std::string_view kNames[7][4] = {
+      {"so", "sonntag", "sun", "sunday"},    {"mo", "montag", "mon", "monday"},
+      {"di", "dienstag", "tue", "tuesday"},  {"mi", "mittwoch", "wed", "wednesday"},
+      {"do", "donnerstag", "thu", "thursday"}, {"fr", "freitag", "fri", "friday"},
+      {"sa", "samstag", "sat", "saturday"},
+  };
+  std::string lower(text);
+  if (!lower.empty() && lower.back() == '.')
+    lower.pop_back();
+  for (auto& c : lower)
+    c = c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c;
+  for (int32_t day = 0; day < 7; ++day)
+    if (std::ranges::find(kNames[day], lower) != std::end(kNames[day]))
+      return day;
+  return std::nullopt;
+}
+
+// `defense`'s time on the day `days` after the day of `now`, in local time.
+inline std::time_t WeeklyTime(std::time_t now, int32_t days, const LoaderDefense& defense)
+{
+  std::tm local  = LocalTm(now);
+  local.tm_mday += days;
+  local.tm_hour  = defense.hour;
+  local.tm_min   = defense.minute;
+  local.tm_sec   = 0;
+  local.tm_isdst = -1;
+  return std::mktime(&local);
+}
+
 inline std::string TwoDigits(int32_t value)
 { return value < 10 ? "0" + std::to_string(value) : std::to_string(value); }
 
@@ -82,7 +114,8 @@ inline std::string Day(const std::tm& local)
 } // namespace detail
 
 // "27.11. 13:00", "27.11.2026 13:00" or "2026-11-27 13:00" into the date fields of `defense`; year 0 when the text
-// has none. False, leaving `defense` alone, when the text is not one of those or names an impossible time.
+// has none. "Fr 13:00" (or "Freitag", "Fri", ...) repeats every week. False, leaving `defense` alone, when the text is
+// not one of those or names an impossible time.
 inline bool ParseDefenseTime(std::string_view text, LoaderDefense& defense)
 {
   using detail::TakeChar;
@@ -95,7 +128,11 @@ inline bool ParseDefenseTime(std::string_view text, LoaderDefense& defense)
   auto clock = StripAsciiWhitespace(text.substr(space + 1));
 
   std::optional<int32_t> year, month, day;
-  if (date.find('-') != std::string_view::npos) {
+  const auto             weekday = detail::Weekday(date);
+  if (weekday) {
+    month = 1;
+    day   = 1;
+  } else if (date.find('-') != std::string_view::npos) {
     year = TakeNumber(date, 4);
     if (!year || !TakeChar(date, '-') || !(month = TakeNumber(date, 2)) || !TakeChar(date, '-')
         || !(day = TakeNumber(date, 2)) || !date.empty())
@@ -118,18 +155,27 @@ inline bool ParseDefenseTime(std::string_view text, LoaderDefense& defense)
 
   if ((year && *year < 2000) || *month < 1 || *month > 12 || *day < 1 || *day > 31 || *hour > 23 || *minute > 59)
     return false;
-  defense.year   = year.value_or(0);
-  defense.month  = *month;
-  defense.day    = *day;
-  defense.hour   = *hour;
-  defense.minute = *minute;
+  defense.year    = year.value_or(0);
+  defense.month   = weekday ? 0 : *month;
+  defense.day     = weekday ? 0 : *day;
+  defense.hour    = *hour;
+  defense.minute  = *minute;
+  defense.weekday = weekday.value_or(-1);
   return true;
 }
 
 // When the defense starts. Without a year, the one that puts it closest to `now`, so "02.01." written in late
-// December means the coming January.
+// December means the coming January. A weekly one starts on its next day that has not ended yet.
 inline std::time_t DefenseStart(const LoaderDefense& defense, std::time_t now)
 {
+  if (defense.weekday >= 0) {
+    const int32_t days = (defense.weekday - detail::LocalTm(now).tm_wday + 7) % 7;
+    if (const auto last_week = detail::WeeklyTime(now, days - 7, defense); last_week + kDefenseRunningSeconds > now)
+      return last_week;
+    if (const auto start = detail::WeeklyTime(now, days, defense); start + kDefenseRunningSeconds > now)
+      return start;
+    return detail::WeeklyTime(now, days + 7, defense);
+  }
   if (defense.year > 0)
     return detail::LocalTime(defense.year, defense);
   const int32_t year = detail::LocalTm(now).tm_year + 1900;

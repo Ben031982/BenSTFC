@@ -148,6 +148,8 @@ struct LoaderDefense {
   int32_t     day    = 0;
   int32_t     hour   = 0;
   int32_t     minute = 0;
+  // Every week on this day, 0 for Sunday to 6 for Saturday; -1 for the date above.
+  int32_t weekday = -1;
 };
 
 // Ship names from a comma list, each split by ShipNameWords, or every ship for "*".

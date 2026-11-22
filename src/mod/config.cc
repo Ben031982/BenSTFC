@@ -364,7 +364,7 @@ std::vector<LoaderDefense> ReadLoaderDefenses(Reader& reader)
       if (!name || StripAsciiWhitespace(*name).empty() || !when
           || !defense_schedule::ParseDefenseTime(*when, defense) || !level_ok) {
         spdlog::warn("invalid config value graphics.loader_defenses entry {}: expected {{ system = \"Name\", "
-                     "level = 1, time = \"27.11. 13:00\" }}; ignoring it",
+                     "level = 1, time = \"Fr 13:00\" }}; ignoring it",
                      entry);
         continue;
       }
