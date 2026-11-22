@@ -333,6 +333,10 @@ announcements = true
 # Days after which an announcement disappears on its own, from 1 to 365
 announcement_max_days = 7
 
+# A summary of an opened battle report next to it: result, rounds, hits, crits, damage dealt and taken (with the hull
+# repaired during the battle), hull afterwards, bridge crew and loot. It is drawn at fleet_bar_scale. German text.
+battle_summary = true
+
 # Subgroup: Territory defense
 # ---------------------------
 

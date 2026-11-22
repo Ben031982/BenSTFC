@@ -392,6 +392,8 @@ public:
     // Leadership announcements from alliance chat, shown for at most this many days.
     bool    announcements         = true;
     int32_t announcement_max_days = 7;
+    // A summary of an opened battle report next to it.
+    bool battle_summary = true;
   } ui;
 
   struct Sync {

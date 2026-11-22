@@ -846,6 +846,31 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
                "Rücksichtsloses Vorgehen 0,15",
         "the long summary line");
 
+  std::string missed(kLongReport);
+  missed += "\n3\t66\tAngreifen\tGegner\t--\tGegner\tNEIN\tSpieler\tAllianz\tPRAEFORTIS\tNEIN\t--\t--\tJA";
+  for (int cell = 14; cell <= 25; ++cell)
+    missed += "\t0";
+  for (int cell = 26; cell <= 32; ++cell)
+    missed += "\t--";
+  const auto with_miss = Parse(missed);
+  Check(with_miss && with_miss->hits_in == 16 && with_miss->crits_in == 1,
+        "a shot without any damage is no hit, also when it is marked critical");
+
+  const auto panel = PanelText(*long_summary);
+  Check(panel.starts_with("<size=130%><b><color=#5EE07A><noparse>SIEG</noparse></color></b></size>\n"),
+        "the panel starts with the result, in green for a win");
+  Check(panel.contains("<color=#8FA3B8>Repariert</color><pos=42%>22 Mrd Hülle\n")
+            && panel.contains("<noparse>Planetfall Uhura</noparse>\n")
+            && panel.ends_with("<noparse>Riesentruhe</noparse><pos=78%><noparse>1</noparse>"),
+        "the panel shows the repair, the bridge and the loot");
+  Check(PanelLines(panel) == 21, "the panel's lines");
+  Check(!PanelText(*summary).contains("Repariert"), "no repair line without a repair");
+
+  toml::table effective;
+  Check(Config::Parse(toml::table{}, effective, false)->ui.battle_summary, "the battle summary is on by default");
+  Check(!Config::Parse(toml::parse("[ngo]\nbattle_summary = false"), effective, false)->ui.battle_summary,
+        "[ngo] battle_summary turns it off");
+
   Check(!Parse("") && !Parse("kaputt\n\nnoch kaputter\n"), "anything else is no report");
   Check(Short(950) == "950" && Short(12'400) == "12 Tsd" && Short(2'920'326) == "2,9 Mio"
             && Short(1'240'000'000) == "1,2 Mrd" && Short(97'264'487'838) == "97 Mrd"

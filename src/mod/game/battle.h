@@ -3,9 +3,15 @@
 // Battle reports: the manager that fetches and keeps them, and the game's own export of one as tab-separated text.
 
 #include <il2cpp/il2cpp.h>
+#include <unity/core.h>
 
 #include <cstdint>
 #include <functional>
+
+// The battle report screen.
+struct BattleReportViewController : unity::Behaviour {
+  using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.Combat", "BattleReportViewController">;
+};
 
 struct BattleResultsManager : il2cpp::Object {
   using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.BattleResults", "BattleResultsManager">;

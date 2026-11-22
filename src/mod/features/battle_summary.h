@@ -4,6 +4,7 @@
 // report the game exports as tab-separated text (BattleReportCSVUtility.ExportToCSV) and sums it up. The export is
 // in the game's language; columns are found by position, and only "JA"/"YES" are read as words. German text.
 
+#include <algorithm>
 #include <charconv>
 #include <cstdint>
 #include <optional>
@@ -190,6 +191,12 @@ inline std::optional<Summary> Parse(std::string_view csv)
         // An attack has damage; other events leave the damage columns empty.
         if (Empty(cells[14]) && Empty(cells[15]))
           continue;
+        // A shot with 0 in every damage column missed, even when it is marked critical.
+        bool missed = true;
+        for (size_t cell = 14; cell <= 25 && cell < cells.size() && missed; ++cell)
+          missed = Number(cells[cell]).value_or(0) == 0;
+        if (missed)
+          continue;
         const bool out = cells[3] == player;
         (out ? summary.hits_out : summary.hits_in) += 1;
         if (Yes(cells[13]))
@@ -257,6 +264,49 @@ inline std::string Short(int64_t value)
     return scaled(value, 1'000, "Tsd");
   return std::to_string(value);
 }
+
+// The panel's text, TextMeshPro rich text: the result, then a table of the numbers, the bridge crew and the loot.
+inline std::string PanelText(const Summary& summary)
+{
+  const auto& player = summary.sides[0];
+  const auto& enemy  = summary.sides[1];
+  const auto  color  = player.result == "SIEG" || player.result == "VICTORY"        ? "#5EE07A"
+                       : player.result == "NIEDERLAGE" || player.result == "DEFEAT" ? "#FF6B6B"
+                                                                                    : "#FFC857";
+  // The text comes from the game and from player names: no tags of its own.
+  const auto plain = [](const std::string& text) { return "<noparse>" + text + "</noparse>"; };
+  const auto row   = [](const char* name, const std::string& value) {
+    return std::string("<color=#8FA3B8>") + name + "</color><pos=42%>" + value + "\n";
+  };
+  std::string text = std::string("<size=130%><b><color=") + color + ">" + plain(player.result) + "</color></b></size>\n";
+  text += plain(player.ship) + " gegen " + plain(enemy.name) + " (" + plain(enemy.level) + ")\n";
+  text += "<color=#8FA3B8>" + plain(summary.location) + (summary.location.empty() ? "" : " · ") + plain(summary.time)
+          + "</color>\n\n";
+  text += row("Runden", std::to_string(summary.rounds));
+  text += row("Treffer", std::to_string(summary.hits_out) + " raus / " + std::to_string(summary.hits_in) + " rein");
+  text += row("Crits", std::to_string(summary.crits_out) + " raus / " + std::to_string(summary.crits_in) + " rein");
+  text += row("Schaden raus",
+              Short(enemy.hull - enemy.hull_left) + " Hülle, " + Short(enemy.shield - enemy.shield_left) + " Schild");
+  text += row("Schaden rein", Short(summary.hull_in) + " Hülle, " + Short(summary.shield_in) + " Schild");
+  if (const auto repaired = Repaired(summary))
+    text += row("Repariert", Short(repaired) + " Hülle");
+  if (player.hull > 0)
+    text += row("Hülle danach", std::to_string(player.hull_left * 100 / player.hull) + " %");
+  text += "\n<color=#8FA3B8>Brücke</color>\n";
+  for (const auto& officer : player.officers)
+    text += plain(officer) + "\n";
+  text += "\n<color=#8FA3B8>Beute</color>\n";
+  if (summary.rewards.empty())
+    text += "keine\n";
+  for (const auto& [name, count] : summary.rewards)
+    text += plain(name) + "<pos=78%>" + plain(count) + "\n";
+  text.pop_back();
+  return text;
+}
+
+// The panel's lines, for its height; the first is the larger headline.
+inline int32_t PanelLines(const std::string& text)
+{ return static_cast<int32_t>(std::count(text.begin(), text.end(), '\n')) + 1; }
 
 // One line for the log: what the panel will show.
 inline std::string Describe(const Summary& summary)

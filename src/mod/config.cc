@@ -168,6 +168,7 @@ constexpr std::pair<std::string_view, std::string_view> kNgoSettings[] = {
     {"ui", "chat_highlight_color"},
     {"ui", "announcements"},
     {"ui", "announcement_max_days"},
+    {"ui", "battle_summary"},
 };
 
 bool NgoSetting(std::string_view section, std::string_view key)
@@ -927,6 +928,7 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.ReadValid("ui", "chat_highlight_color", u.chat_highlight_color, chat_highlight::ValidColor);
   r.Read("ui", "announcements", u.announcements);
   r.ReadValid("ui", "announcement_max_days", u.announcement_max_days, [](int32_t v) { return v >= 1 && v <= 365; });
+  r.Read("ui", "battle_summary", u.battle_summary);
 
   // [sync]
   auto sync = std::make_shared<Sync>();
