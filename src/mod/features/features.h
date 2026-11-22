@@ -200,6 +200,7 @@ void AdjustUiViewerScale(bool up);
 #if _WIN32
 extern const Feature kFreeResize;
 extern const Feature kCursor;
+extern const Feature kWindowMemory;
 #endif
 // The monitor's physical-to-logical pixel ratio on Windows; 1 elsewhere. Cached until `refresh`.
 float WindowDpiScale(bool refresh = false);

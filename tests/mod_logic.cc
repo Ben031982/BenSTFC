@@ -6,6 +6,7 @@
 #include "features/notification_audio.h"
 #include "features/ship_shortcut_hint.h"
 #include "features/toast_text.h"
+#include "features/window_placement.h"
 #include "reload.h"
 #include "shortcuts.h"
 #include "text.h"
@@ -467,6 +468,21 @@ loader_defenses = [
   Check(Config::Parse(toml::table{}, effective, false)->ui.defense_reminders.empty(), "reminders are off by default");
 }
 
+void WindowPlacement()
+{
+  using namespace window_placement;
+  const Placement placement{-1600, 80, -100, 1000, true};
+  Check(Format(placement) == "-1600 80 -100 1000 1", "a placement is one line");
+  Check(Parse(Format(placement)) == placement, "a placement reads back, also on a monitor left of the main one");
+  Check(Parse(" 100 80 1700 1000 0\r") == Placement{100, 80, 1700, 1000, false}, "spaces and a CR are fine");
+  for (const auto* bad : {"", "100 80 1700 1000", "100 80 1700 1000 2", "100 80 1700 1000 0 7", "a b c d e",
+                          "100 80 300 1000 0", "100 80 1700 200 0"})
+    Check(!Parse(bad), "a malformed or tiny placement is ignored");
+
+  toml::table effective;
+  Check(Config::Parse(toml::table{}, effective, false)->graphics.remember_window, "window memory is on by default");
+}
+
 void UpstreamSettings()
 {
   toml::table effective;
@@ -692,6 +708,7 @@ int main()
   NotificationAudio();
   DailyFactionSettings();
   DefenseSchedule();
+  WindowPlacement();
   UpstreamSettings();
   RenamedSettings();
   ParseDoesNotActivateSettings();

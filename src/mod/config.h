@@ -226,6 +226,8 @@ public:
     FleetLabelProfile zoom_label_player;
     FleetLabelProfile zoom_label_non_player;
     bool              free_resize         = true;
+    // Reopen the window where and as large as it was last time (Windows, windowed mode only).
+    bool              remember_window     = true;
     bool              allow_cursor        = true;
     float             keyboard_zoom_speed = 350.0f;
     // TODO(tashcan): read (with enable_experimental) but nothing applies it.

@@ -1,19 +1,26 @@
-// The game window on Windows: [graphics] free_resize, the -ccm profile in the title bar, [graphics] allow_cursor, and
-// the monitor's DPI scale.
+// The game window on Windows: [graphics] free_resize, the -ccm profile in the title bar, [graphics] allow_cursor,
+// [graphics] remember_window, and the monitor's DPI scale.
 
 #include "features/features.h"
 
 #if _WIN32
 #include "config.h"
+#include "features/window_placement.h"
 #include "file.h"
 
 #include "game/app.h"
 
 #include <il2cpp/hook.h>
 #include <il2cpp/il2cpp.h>
+#include <spdlog/spdlog.h>
 #include <unity/core.h>
 
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include <Windows.h>
 
@@ -114,6 +121,93 @@ bool InstallCursor()
   IL2CPP_STAGE(hooks, unity::Cursor::Method("SetCursor_Injected"), Cursor_SetCursor_Injected_Hook);
   return hooks.Commit();
 }
+
+// --- Window memory ---
+
+// [graphics] remember_window: the window's restored rectangle, and whether it was maximized, go to a file named like
+// the vars file and come back once when the next session's window appears. Only a window with a title bar takes
+// part, so borderless and exclusive fullscreen stay the game's. Nothing is saved before that restore, so the
+// game's own first size never overwrites the saved one.
+bool                                       window_memory_restored = false;
+std::optional<window_placement::Placement> window_memory_saved;
+
+std::filesystem::path WindowMemoryFile()
+{
+  auto name = File::Vars();
+  if (const auto dot = name.rfind('.'); dot != std::string::npos)
+    name.resize(dot);
+  return File::Path(name + ".window");
+}
+
+bool HasTitleBar(HWND window)
+{ return (GetWindowLongPtrW(window, GWL_STYLE) & WS_CAPTION) == WS_CAPTION; }
+
+std::optional<window_placement::Placement> CurrentWindowPlacement(HWND window)
+{
+  WINDOWPLACEMENT placement{};
+  placement.length = sizeof(placement);
+  if (!GetWindowPlacement(window, &placement))
+    return std::nullopt;
+  const auto& normal = placement.rcNormalPosition;
+  return window_placement::Placement{
+      .left      = static_cast<int32_t>(normal.left),
+      .top       = static_cast<int32_t>(normal.top),
+      .right     = static_cast<int32_t>(normal.right),
+      .bottom    = static_cast<int32_t>(normal.bottom),
+      .maximized = placement.showCmd == SW_SHOWMAXIMIZED,
+  };
+}
+
+void RestoreWindowPlacement(HWND window)
+{
+  std::ifstream file(WindowMemoryFile());
+  std::string   line;
+  if (!file || !std::getline(file, line))
+    return;
+  const auto saved = window_placement::Parse(line);
+  if (!saved) {
+    spdlog::warn("[WindowMemory] ignoring the saved window '{}'", line);
+    return;
+  }
+  // SetWindowPlacement moves a rectangle that is off every monitor back onto one.
+  WINDOWPLACEMENT placement{};
+  placement.length = sizeof(placement);
+  placement.showCmd          = saved->maximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
+  placement.rcNormalPosition = {saved->left, saved->top, saved->right, saved->bottom};
+  if (!SetWindowPlacement(window, &placement)) {
+    spdlog::warn("[WindowMemory] could not restore the window: error {}", GetLastError());
+    return;
+  }
+  window_memory_saved = saved;
+  spdlog::info("[WindowMemory] restored the window to {}", line);
+}
+
+void WindowMemoryFrame()
+{
+  static Throttle throttle(std::chrono::seconds(2));
+  if (!Config::Get().graphics.remember_window || !throttle.Due())
+    return;
+  auto* window = GameWindow();
+  if (!window || IsIconic(window) || !HasTitleBar(window))
+    return;
+  if (!window_memory_restored) {
+    window_memory_restored = true;
+    RestoreWindowPlacement(window);
+    return;
+  }
+
+  const auto current = CurrentWindowPlacement(window);
+  if (!current || current == window_memory_saved)
+    return;
+  std::ofstream file(WindowMemoryFile(), std::ios::trunc);
+  if (file << window_placement::Format(*current) << '\n') {
+    window_memory_saved = current;
+    return;
+  }
+  static bool warned = false;
+  if (!std::exchange(warned, true))
+    spdlog::warn("[WindowMemory] could not write {}", WindowMemoryFile().string());
+}
 } // namespace
 
 // The display scale of the monitor holding the game window, cached until `refresh` or a move to another monitor: the
@@ -144,6 +238,7 @@ float WindowDpiScale(bool refresh)
 const Feature kFreeResize{"FreeResize", &Config::Patches::freeresizehooks, InstallFreeResize};
 // TODO: allow_cursor is not a test patch; it sits in testpatches only because it always has.
 const Feature kCursor{"Cursor", &Config::Patches::testpatches, InstallCursor};
+const Feature kWindowMemory{"WindowMemory", nullptr, nullptr, WindowMemoryFrame};
 #else
 float WindowDpiScale(bool)
 { return 1.0f; }

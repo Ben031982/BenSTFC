@@ -251,6 +251,10 @@ disable_target_camera_lock = false
 # Allow free resizing, set to false to disable
 free_resize = true
 
+# Reopen the game window where you left it, with the same size and maximized state.
+# Windows only, and only in windowed mode. It is saved beside the vars file with the extension .window.
+remember_window = true
+
 # Show the remaining Galactic Anomaly time below Help All, Engage, and Claim
 galactic_anomaly_timer = false
 

@@ -183,6 +183,7 @@ constexpr const Feature* kFeatures[] = {
 #if _WIN32
     &kFreeResize,
     &kCursor,
+    &kWindowMemory,
 #endif
     // sync/sync.cc
     &kSync,
