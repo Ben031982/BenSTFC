@@ -22,7 +22,6 @@ Features depend on the game client. A client update can break a hook until the m
 | Haven | Extend camera range while keeping road surfaces above the ground. `graphics.haven_zoom = 0.0` uses the native range. |
 | Fleet labels | Choose native, expanded, compact, or zoom-threshold detail separately for player and non-player fleets. |
 | Window and cursor | Resize the game window freely on Windows and control whether the game replaces the system cursor. |
-| Background frame rate | Draw at most `background_fps` frames a second on Windows while another program has the focus; the game's own frame rate and vsync return with the focus. 15 by default, 0 turns it off. |
 | Borderless full screen | Press F11 on Windows to switch between the window and borderless full screen on its monitor; F11 again gives the window back as it was. With `remember_window`, the game starts borderless again. `borderless_fullscreen` in `[graphics]`, on by default; the key is `toggle_borderless`. |
 | Window memory | Reopen the game window on Windows where you left it, with the same size and maximized state. `remember_window` in `[graphics]`; on by default, windowed mode only. |
 | Mirror space timer | Show the earliest remaining ship countdown in the viewed Mirror system, below Help All, Engage and Claim. Enable `mirror_space_timer` in `[graphics]`. Disabled by default. |

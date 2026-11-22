@@ -363,31 +363,6 @@ struct Time {
   }
 };
 
-// Frame pacing through Application's and QualitySettings' internal calls. targetFrameRate caps the frame rate only
-// while vSyncCount is 0; -1 is Unity's platform default. The getters return nothing when Unity lacks the call.
-struct FramePacing {
-  static std::optional<int32_t> targetFrameRate()
-  {
-    static const il2cpp::ICall<int32_t()> call{"UnityEngine.Application::get_targetFrameRate()"};
-    return call ? std::optional(call()) : std::nullopt;
-  }
-  static void SetTargetFrameRate(int32_t value)
-  {
-    static const il2cpp::ICall<void(int32_t)> call{"UnityEngine.Application::set_targetFrameRate(System.Int32)"};
-    call(value);
-  }
-  static std::optional<int32_t> vSyncCount()
-  {
-    static const il2cpp::ICall<int32_t()> call{"UnityEngine.QualitySettings::get_vSyncCount()"};
-    return call ? std::optional(call()) : std::nullopt;
-  }
-  static void SetVSyncCount(int32_t value)
-  {
-    static const il2cpp::ICall<void(int32_t)> call{"UnityEngine.QualitySettings::set_vSyncCount(System.Int32)"};
-    call(value);
-  }
-};
-
 struct Texture2D : il2cpp::Object {
   using Class = il2cpp::Class<"UnityEngine.CoreModule", "UnityEngine", "Texture2D">;
 

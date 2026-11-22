@@ -185,7 +185,6 @@ constexpr const Feature* kFeatures[] = {
     &kCursor,
     &kWindowMemory,
     &kBorderless,
-    &kBackgroundFps,
 #endif
     // sync/sync.cc
     &kSync,

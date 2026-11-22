@@ -202,7 +202,6 @@ extern const Feature kFreeResize;
 extern const Feature kCursor;
 extern const Feature kWindowMemory;
 extern const Feature kBorderless;
-extern const Feature kBackgroundFps;
 #endif
 // The monitor's physical-to-logical pixel ratio on Windows; 1 elsewhere. Cached until `refresh`.
 float WindowDpiScale(bool refresh = false);

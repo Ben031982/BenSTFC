@@ -1,6 +1,5 @@
 // The game window on Windows: [graphics] free_resize, the -ccm profile in the title bar, [graphics] allow_cursor,
-// [graphics] remember_window, [graphics] borderless_fullscreen with its F11 toggle, [graphics] background_fps, and the
-// monitor's DPI scale.
+// [graphics] remember_window, [graphics] borderless_fullscreen with its F11 toggle, and the monitor's DPI scale.
 
 #include "features/features.h"
 
@@ -350,63 +349,6 @@ void BorderlessFrame()
   spdlog::info("[Borderless] the game gave the window its frame back; taking it again");
   EnterBorderless(window, borderless_from);
 }
-
-// --- Background frame rate ---
-
-// [graphics] background_fps: while a window of another program has the focus, the game draws at most that many
-// frames a second, with vsync off since Unity ignores the cap otherwise. The game's own cap and vsync come back when
-// it has the focus again. 0 leaves both alone.
-bool    background_capped     = false;
-int32_t background_saved_rate = -1;
-int32_t background_saved_sync = 0;
-
-bool GameHasFocus()
-{
-  DWORD process = 0;
-  if (auto* foreground = GetForegroundWindow())
-    GetWindowThreadProcessId(foreground, &process);
-  return process == GetCurrentProcessId();
-}
-
-void RestoreForegroundPacing()
-{
-  unity::FramePacing::SetVSyncCount(background_saved_sync);
-  unity::FramePacing::SetTargetFrameRate(background_saved_rate);
-  background_capped = false;
-}
-
-void BackgroundFpsFrame()
-{
-  static Throttle throttle(std::chrono::milliseconds(500));
-  if (!throttle.Due())
-    return;
-  const int32_t limit = Config::Get().graphics.background_fps;
-  const bool    cap   = limit > 0 && !GameHasFocus();
-  if (!cap) {
-    if (background_capped)
-      RestoreForegroundPacing();
-    return;
-  }
-
-  const auto rate = unity::FramePacing::targetFrameRate();
-  const auto sync = unity::FramePacing::vSyncCount();
-  if (!rate || !sync)
-    return;
-  if (!background_capped) {
-    background_saved_rate = *rate;
-    background_saved_sync = *sync;
-    background_capped     = true;
-    static bool logged    = false;
-    if (!std::exchange(logged, true))
-      spdlog::info("[BackgroundFps] {} fps in the background; the game's {} fps and vsync {} return with the focus",
-                   limit, *rate, *sync);
-  }
-  // Applied again whenever the game sets its own values while in the background, such as from its settings.
-  if (*sync != 0)
-    unity::FramePacing::SetVSyncCount(0);
-  if (*rate != limit)
-    unity::FramePacing::SetTargetFrameRate(limit);
-}
 } // namespace
 
 // The display scale of the monitor holding the game window, cached until `refresh` or a move to another monitor: the
@@ -439,7 +381,6 @@ const Feature kFreeResize{"FreeResize", &Config::Patches::freeresizehooks, Insta
 const Feature kCursor{"Cursor", &Config::Patches::testpatches, InstallCursor};
 const Feature kWindowMemory{"WindowMemory", nullptr, nullptr, WindowMemoryFrame};
 const Feature kBorderless{"Borderless", nullptr, nullptr, BorderlessFrame};
-const Feature kBackgroundFps{"BackgroundFps", nullptr, nullptr, BackgroundFpsFrame};
 #else
 float WindowDpiScale(bool)
 { return 1.0f; }

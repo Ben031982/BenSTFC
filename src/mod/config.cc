@@ -705,8 +705,6 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   read_label("zoom_label_non_player", g.zoom_label_non_player);
   r.Read("graphics", "free_resize", g.free_resize);
   r.Read("graphics", "remember_window", g.remember_window);
-  r.ReadValid("graphics", "background_fps", g.background_fps,
-              [](int32_t v) { return v == 0 || (v >= 5 && v <= 120); });
   r.Read("graphics", "allow_cursor", g.allow_cursor);
   r.Read("graphics", "keyboard_zoom_speed", g.keyboard_zoom_speed);
   if (control.enable_experimental)
