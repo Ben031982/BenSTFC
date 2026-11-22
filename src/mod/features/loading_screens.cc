@@ -213,12 +213,14 @@ struct LoadingTip {
   int32_t     weight;
 };
 
-// Borderless fullscreen and its F11 toggle are not applied yet, so no tip mentions them.
 constexpr LoadingTip kTipTexts[] = {
     {"Did you know? You can customize zoom presets, hotkeys, and UI scale in the community mod settings file to suit "
      "your playstyle.",
      15},
     {"The community mod supports custom loading screens and transition backgrounds for a better experience.", 10},
+#if _WIN32
+    {"Press F11 to switch between borderless full screen and windowed mode.", 15},
+#endif
     {"Visit https://stfc.pro to track player rankings and stats across over 236,000 players and 114 servers in Star "
      "Trek Fleet Command.",
      50},

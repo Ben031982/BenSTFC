@@ -472,15 +472,21 @@ void WindowPlacement()
 {
   using namespace window_placement;
   const Placement placement{-1600, 80, -100, 1000, true};
-  Check(Format(placement) == "-1600 80 -100 1000 1", "a placement is one line");
+  Check(Format(placement) == "-1600 80 -100 1000 1 0", "a placement is one line");
   Check(Parse(Format(placement)) == placement, "a placement reads back, also on a monitor left of the main one");
   Check(Parse(" 100 80 1700 1000 0\r") == Placement{100, 80, 1700, 1000, false}, "spaces and a CR are fine");
+  Check(Parse("100 80 1700 1000 0") == Placement{100, 80, 1700, 1000, false, false},
+        "a file from before the borderless flag reads as windowed");
+  const Placement borderless{100, 80, 1700, 1000, false, true};
+  Check(Format(borderless) == "100 80 1700 1000 0 1" && Parse(Format(borderless)) == borderless,
+        "the borderless flag reads back");
   for (const auto* bad : {"", "100 80 1700 1000", "100 80 1700 1000 2", "100 80 1700 1000 0 7", "a b c d e",
-                          "100 80 300 1000 0", "100 80 1700 200 0"})
+                          "100 80 300 1000 0", "100 80 1700 200 0", "100 80 1700 1000 0 1 0", "100 80 1700 1000 0 x"})
     Check(!Parse(bad), "a malformed or tiny placement is ignored");
 
   toml::table effective;
   Check(Config::Parse(toml::table{}, effective, false)->graphics.remember_window, "window memory is on by default");
+  Check(Config::Parse(toml::table{}, effective, false)->graphics.borderless_fullscreen, "F11 is on by default");
   Check(Config::Parse(toml::table{}, effective, false)->graphics.background_fps == 15, "background fps default");
   for (const auto* text : {"[graphics]\nbackground_fps = 3", "[graphics]\nbackground_fps = 500"})
     Check(Config::Parse(toml::parse(text), effective, false)->graphics.background_fps == 15,

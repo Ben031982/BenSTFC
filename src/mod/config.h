@@ -237,8 +237,8 @@ public:
     // How much of the pan speed is kept each frame after a drag or key is released.
     float system_pan_momentum_falloff = 0.8f;
     bool  disable_target_camera_lock  = false;
-    // TODO(tashcan): the F11 borderless toggle needs a SetWindowLongW detour that was never installed, so this does
-    // nothing.
+    // F11 ([shortcuts] toggle_borderless) switches between the window and borderless full screen on its monitor
+    // (Windows).
     bool borderless_fullscreen = true;
     // TODO(tashcan): read but nothing applies it.
     float transition_time        = 0.01f;

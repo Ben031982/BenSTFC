@@ -242,7 +242,9 @@ loader_transition_black = false
 # Allow the system cursor to be replaced? (On by default)
 allow_cursor = true
 
-# Allow borderless full screen mode. Currently has no effect
+# F11 ([shortcuts] toggle_borderless) switches between windowed mode and borderless full screen on the window's
+# monitor. With remember_window, the game starts borderless again if you closed it that way. Windows only, and only
+# while the game's own display setting is windowed.
 borderless_fullscreen = true
 
 # Keep the system camera free when selecting a target. Requires mod 1.1.10 or newer.
@@ -519,6 +521,9 @@ set_hotkeys_disabled = "CTRL-ALT-MINUS"
 
 # CTRL-ALT-=
 set_hotkeys_enabled = "CTRL-ALT-="
+
+# Switch between windowed mode and borderless full screen (Windows, borderless_fullscreen)
+toggle_borderless = "F11"
 
 # Show or hide shortcut hints
 toggle_shortcut_hints = "HOME"

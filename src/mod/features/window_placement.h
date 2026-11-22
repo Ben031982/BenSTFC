@@ -1,7 +1,8 @@
 #pragma once
 
 // The game window saved by [graphics] remember_window, without touching Windows so it can be tested: its rectangle on
-// screen, or for a maximized window the rectangle it restores to, and whether it was maximized, as one line of text.
+// screen, or for a maximized window the rectangle it restores to, whether it was maximized, and whether F11 had made it
+// borderless full screen, as one line of text.
 
 #include <charconv>
 #include <cstdint>
@@ -16,39 +17,50 @@ constexpr int32_t kMinimumWidth  = 320;
 constexpr int32_t kMinimumHeight = 240;
 
 struct Placement {
-  int32_t left      = 0;
-  int32_t top       = 0;
-  int32_t right     = 0;
-  int32_t bottom    = 0;
-  bool    maximized = false;
+  int32_t left       = 0;
+  int32_t top        = 0;
+  int32_t right      = 0;
+  int32_t bottom     = 0;
+  bool    maximized  = false;
+  // The rectangle is the window F11 returns to.
+  bool    borderless = false;
 
   bool operator==(const Placement&) const = default;
 };
 
-// "left top right bottom maximized", such as "100 80 1700 1000 0".
+// "left top right bottom maximized borderless", such as "100 80 1700 1000 0 0".
 inline std::string Format(const Placement& placement)
 {
   return std::to_string(placement.left) + " " + std::to_string(placement.top) + " " + std::to_string(placement.right)
-         + " " + std::to_string(placement.bottom) + " " + (placement.maximized ? "1" : "0");
+         + " " + std::to_string(placement.bottom) + " " + (placement.maximized ? "1" : "0") + " "
+         + (placement.borderless ? "1" : "0");
 }
 
-// The placement Format wrote, or nothing when `text` is malformed or the window would be too small.
+// The placement Format wrote, or nothing when `text` is malformed or the window would be too small. Files from before
+// the borderless flag end after "maximized" and read as not borderless.
 inline std::optional<Placement> Parse(std::string_view text)
 {
-  int32_t values[5] = {};
-  for (auto& value : values) {
-    while (!text.empty() && (text.front() == ' ' || text.front() == '\t'))
+  const auto skip_blanks = [&text] {
+    while (!text.empty() && (text.front() == ' ' || text.front() == '\t' || text.front() == '\r'))
       text.remove_prefix(1);
+  };
+  int32_t values[6] = {};
+  size_t  count     = 0;
+  for (auto& value : values) {
+    skip_blanks();
+    if (text.empty() && count == 5)
+      break;
     const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
     if (error != std::errc{})
       return std::nullopt;
     text.remove_prefix(static_cast<size_t>(end - text.data()));
+    ++count;
   }
-  while (!text.empty() && (text.front() == ' ' || text.front() == '\t' || text.front() == '\r'))
-    text.remove_prefix(1);
-  if (!text.empty() || (values[4] != 0 && values[4] != 1))
+  skip_blanks();
+  const auto is_flag = [](int32_t value) { return value == 0 || value == 1; };
+  if (!text.empty() || !is_flag(values[4]) || !is_flag(values[5]))
     return std::nullopt;
-  const Placement placement{values[0], values[1], values[2], values[3], values[4] == 1};
+  const Placement placement{values[0], values[1], values[2], values[3], values[4] == 1, values[5] == 1};
   if (int64_t{placement.right} - placement.left < kMinimumWidth
       || int64_t{placement.bottom} - placement.top < kMinimumHeight)
     return std::nullopt;

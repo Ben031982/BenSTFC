@@ -1,5 +1,6 @@
 // The game window on Windows: [graphics] free_resize, the -ccm profile in the title bar, [graphics] allow_cursor,
-// [graphics] remember_window, [graphics] background_fps, and the monitor's DPI scale.
+// [graphics] remember_window, [graphics] borderless_fullscreen with its F11 toggle, [graphics] background_fps, and the
+// monitor's DPI scale.
 
 #include "features/features.h"
 
@@ -7,6 +8,7 @@
 #include "config.h"
 #include "features/window_placement.h"
 #include "file.h"
+#include "shortcuts.h"
 
 #include "game/app.h"
 
@@ -14,6 +16,7 @@
 #include <il2cpp/il2cpp.h>
 #include <spdlog/spdlog.h>
 #include <unity/core.h>
+#include <unity/input.h>
 
 #include <chrono>
 #include <filesystem>
@@ -126,10 +129,15 @@ bool InstallCursor()
 
 // [graphics] remember_window: the window's rectangle, and whether it was maximized, go to a file named like the vars
 // file and come back once when the next session's window appears. Only a window with a title bar takes part, so
-// borderless and exclusive fullscreen stay the game's. Nothing is saved before that restore, so the game's own first
-// size never overwrites the saved one.
+// the game's own full screen modes stay the game's; borderless full screen from F11 is saved as the window it returns
+// to, with the borderless flag. Nothing is saved before that restore, so the game's own first size never overwrites
+// the saved one.
 bool                                       window_memory_restored = false;
 std::optional<window_placement::Placement> window_memory_saved;
+
+// Borderless full screen from F11, below.
+bool borderless_active = false;
+bool EnterBorderless(HWND window, const window_placement::Placement& from);
 
 std::filesystem::path WindowMemoryFile()
 {
@@ -164,6 +172,41 @@ std::optional<window_placement::Placement> CurrentWindowPlacement(HWND window)
   };
 }
 
+// Puts the window at `placement`. A maximized one, or one on no monitor (one since unplugged), goes through
+// SetWindowPlacement, which maximizes on the monitor of the normal rectangle and moves a window that is off every
+// monitor back onto one. Any other is set where it was on screen, so a window snapped to half the screen comes back
+// snapped.
+bool ApplyPlacement(HWND window, const window_placement::Placement& placement)
+{
+  const RECT rect{placement.left, placement.top, placement.right, placement.bottom};
+  if (placement.maximized || !MonitorFromRect(&rect, MONITOR_DEFAULTTONULL)) {
+    WINDOWPLACEMENT restored{};
+    restored.length           = sizeof(restored);
+    restored.showCmd          = placement.maximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
+    restored.rcNormalPosition = rect;
+    return SetWindowPlacement(window, &restored) != 0;
+  }
+  if (IsZoomed(window))
+    ShowWindow(window, SW_SHOWNORMAL);
+  return SetWindowPos(window, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+                      SWP_NOZORDER | SWP_NOACTIVATE)
+         != 0;
+}
+
+void SaveWindowMemory(const window_placement::Placement& placement)
+{
+  if (!Config::Get().graphics.remember_window)
+    return;
+  std::ofstream file(WindowMemoryFile(), std::ios::trunc);
+  if (file << window_placement::Format(placement) << '\n') {
+    window_memory_saved = placement;
+    return;
+  }
+  static bool warned = false;
+  if (!std::exchange(warned, true))
+    spdlog::warn("[WindowMemory] could not write {}", WindowMemoryFile().string());
+}
+
 void RestoreWindowPlacement(HWND window)
 {
   std::ifstream file(WindowMemoryFile());
@@ -175,35 +218,20 @@ void RestoreWindowPlacement(HWND window)
     spdlog::warn("[WindowMemory] ignoring the saved window '{}'", line);
     return;
   }
+  // A window on no monitor is left to the game, unless it is maximized or goes borderless, which place it on one.
   const RECT rect{saved->left, saved->top, saved->right, saved->bottom};
-  if (saved->maximized) {
-    // SetWindowPlacement maximizes on the monitor of the normal rectangle, moving one that is off every monitor back
-    // onto one.
-    WINDOWPLACEMENT placement{};
-    placement.length           = sizeof(placement);
-    placement.showCmd          = SW_SHOWMAXIMIZED;
-    placement.rcNormalPosition = rect;
-    if (!SetWindowPlacement(window, &placement)) {
-      spdlog::warn("[WindowMemory] could not restore the window: error {}", GetLastError());
-      return;
-    }
-  } else {
-    // SetWindowPos takes the rectangle as given, so one on no monitor (one since unplugged) is left to the game.
-    if (!MonitorFromRect(&rect, MONITOR_DEFAULTTONULL)) {
-      spdlog::info("[WindowMemory] the saved window {} is on no monitor; leaving the window where the game put it",
-                   line);
-      return;
-    }
-    if (IsZoomed(window))
-      ShowWindow(window, SW_SHOWNORMAL);
-    if (!SetWindowPos(window, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-                      SWP_NOZORDER | SWP_NOACTIVATE)) {
-      spdlog::warn("[WindowMemory] could not restore the window: error {}", GetLastError());
-      return;
-    }
+  if (!saved->maximized && !saved->borderless && !MonitorFromRect(&rect, MONITOR_DEFAULTTONULL)) {
+    spdlog::info("[WindowMemory] the saved window {} is on no monitor; leaving the window where the game put it", line);
+    return;
+  }
+  if (!ApplyPlacement(window, *saved)) {
+    spdlog::warn("[WindowMemory] could not restore the window: error {}", GetLastError());
+    return;
   }
   window_memory_saved = saved;
   spdlog::info("[WindowMemory] restored the window to {}", line);
+  if (saved->borderless && Config::Get().graphics.borderless_fullscreen)
+    EnterBorderless(window, *saved);
 }
 
 void WindowMemoryFrame()
@@ -212,7 +240,7 @@ void WindowMemoryFrame()
   if (!Config::Get().graphics.remember_window || !throttle.Due())
     return;
   auto* window = GameWindow();
-  if (!window || IsIconic(window) || !HasTitleBar(window))
+  if (!window || IsIconic(window) || !HasTitleBar(window) || borderless_active)
     return;
   if (!window_memory_restored) {
     window_memory_restored = true;
@@ -221,16 +249,106 @@ void WindowMemoryFrame()
   }
 
   const auto current = CurrentWindowPlacement(window);
-  if (!current || current == window_memory_saved)
+  if (current && current != window_memory_saved)
+    SaveWindowMemory(*current);
+}
+
+// --- Borderless full screen ---
+
+// [graphics] borderless_fullscreen: F11 ([shortcuts] toggle_borderless) takes the window's frame away and stretches it
+// over its monitor, and gives the window back as it was. With remember_window the window it returns to is saved with
+// the borderless flag, so the next session starts borderless too. A window without a title bar the mod did not make is
+// in one of the game's own full screen modes, which F11 leaves alone.
+constexpr int32_t           kBorderlessRetakes = 3;
+LONG_PTR                    borderless_style   = 0;
+window_placement::Placement borderless_from;
+int32_t                     borderless_retakes = 0;
+
+bool EnterBorderless(HWND window, const window_placement::Placement& from)
+{
+  MONITORINFO monitor{};
+  monitor.cbSize = sizeof(monitor);
+  if (!GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor)) {
+    spdlog::warn("[Borderless] could not find the window's monitor: error {}", GetLastError());
+    return false;
+  }
+  // Restored first, so the frame comes back on a normal window rather than one Windows still counts as maximized.
+  if (IsZoomed(window))
+    ShowWindow(window, SW_SHOWNORMAL);
+  const auto style = GetWindowLongPtrW(window, GWL_STYLE);
+  SetWindowLongPtrW(window, GWL_STYLE, style & ~static_cast<LONG_PTR>(WS_OVERLAPPEDWINDOW));
+  const auto& area = monitor.rcMonitor;
+  if (!SetWindowPos(window, HWND_TOP, area.left, area.top, area.right - area.left, area.bottom - area.top,
+                    SWP_FRAMECHANGED | SWP_NOOWNERZORDER)) {
+    spdlog::warn("[Borderless] could not cover the monitor: error {}", GetLastError());
+    SetWindowLongPtrW(window, GWL_STYLE, style);
+    SetWindowPos(window, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    ApplyPlacement(window, from);
+    return false;
+  }
+  borderless_style           = style;
+  borderless_from            = from;
+  borderless_from.borderless = false;
+  borderless_active          = true;
+
+  auto saved       = borderless_from;
+  saved.borderless = true;
+  SaveWindowMemory(saved);
+  spdlog::info("[Borderless] borderless full screen at {} {} {} {}", area.left, area.top, area.right, area.bottom);
+  return true;
+}
+
+void LeaveBorderless(HWND window)
+{
+  borderless_active = false;
+  SetWindowLongPtrW(window, GWL_STYLE, borderless_style);
+  SetWindowPos(window, nullptr, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  if (!ApplyPlacement(window, borderless_from))
+    spdlog::warn("[Borderless] could not give the window back: error {}", GetLastError());
+  SaveWindowMemory(borderless_from);
+  spdlog::info("[Borderless] windowed again at {}", window_placement::Format(borderless_from));
+}
+
+void BorderlessFrame()
+{
+  const auto& config = Config::Get();
+  auto*       window = GameWindow();
+  if (!window)
     return;
-  std::ofstream file(WindowMemoryFile(), std::ios::trunc);
-  if (file << window_placement::Format(*current) << '\n') {
-    window_memory_saved = current;
+  // Turned off in the settings file while borderless.
+  if (borderless_active && !config.graphics.borderless_fullscreen) {
+    LeaveBorderless(window);
     return;
   }
-  static bool warned = false;
-  if (!std::exchange(warned, true))
-    spdlog::warn("[WindowMemory] could not write {}", WindowMemoryFile().string());
+
+  // Keys typed into a text field (chat, search) are text, not shortcuts.
+  if (config.graphics.borderless_fullscreen && config.control.hotkeys_enabled && !unity::Key::IsInputFocused()
+      && Shortcut::IsDown(Action::kToggleBorderless)) {
+    borderless_retakes = 0;
+    if (borderless_active) {
+      LeaveBorderless(window);
+    } else if (!HasTitleBar(window)) {
+      spdlog::info("[Borderless] the game is in its own full screen mode; set it to windowed for F11");
+    } else if (const auto from = CurrentWindowPlacement(window); from && !IsIconic(window)) {
+      EnterBorderless(window, *from);
+    }
+    return;
+  }
+
+  // The game can give its window the frame back, such as when it changes the resolution; it is taken again a few
+  // times, then left to the game.
+  static Throttle throttle(std::chrono::seconds(1));
+  if (!borderless_active || !throttle.Due() || !HasTitleBar(window))
+    return;
+  if (++borderless_retakes > kBorderlessRetakes) {
+    spdlog::warn("[Borderless] the game keeps taking its window back; leaving it windowed");
+    borderless_active = false;
+    SaveWindowMemory(borderless_from);
+    return;
+  }
+  spdlog::info("[Borderless] the game gave the window its frame back; taking it again");
+  EnterBorderless(window, borderless_from);
 }
 
 // --- Background frame rate ---
@@ -320,6 +438,7 @@ const Feature kFreeResize{"FreeResize", &Config::Patches::freeresizehooks, Insta
 // TODO: allow_cursor is not a test patch; it sits in testpatches only because it always has.
 const Feature kCursor{"Cursor", &Config::Patches::testpatches, InstallCursor};
 const Feature kWindowMemory{"WindowMemory", nullptr, nullptr, WindowMemoryFrame};
+const Feature kBorderless{"Borderless", nullptr, nullptr, BorderlessFrame};
 const Feature kBackgroundFps{"BackgroundFps", nullptr, nullptr, BackgroundFpsFrame};
 #else
 float WindowDpiScale(bool)
