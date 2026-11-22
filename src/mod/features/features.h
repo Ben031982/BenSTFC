@@ -83,6 +83,9 @@ extern const Feature kInstantCargo;
 
 // chat.cc
 extern const Feature kChat;
+
+// chat_highlight.cc
+extern const Feature kChatHighlight;
 extern const Feature kChatTitles;
 // Opens chat, or focuses side chat's input. Never swallows the key.
 void OpenChatShortcut();

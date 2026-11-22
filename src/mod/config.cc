@@ -3,6 +3,7 @@
 
 #include "config.h"
 
+#include "features/chat_highlight.h"
 #include "features/defense_schedule.h"
 #include "file.h"
 #include "shortcuts.h"
@@ -874,6 +875,8 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
               [](float v) { return std::isfinite(v) && v >= 0.5f && v <= 2.5f; });
   u.fleet_notifications = ReadFleetNotifications(r);
   r.Read("ui", "notify_only_in_background", u.notify_only_in_background);
+  r.Read("ui", "chat_highlight_words", u.chat_highlight_words);
+  r.ReadValid("ui", "chat_highlight_color", u.chat_highlight_color, chat_highlight::ValidColor);
 
   // [sync]
   auto sync = std::make_shared<Sync>();

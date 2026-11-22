@@ -859,6 +859,14 @@ notify_only_in_background = true
 # Subgroup: Chat
 # --------------
 
+# Chat messages with one of these words (comma separated) stand out in full-screen chat, side chat and the chat
+# preview: the word in bold and color, the message on a faint background. Whole words only; case is ignored for A to Z.
+# Blank means off.
+chat_highlight_words = ""
+
+# The color of chat_highlight_words, as "#RRGGBB"
+chat_highlight_color = "#FFD54A"
+
 # Open alliance side chat once per login, after station and chat initialization, section completion, and three continuous seconds of readiness. Requires mod 1.1.10 or newer.
 auto_open_chat = false
 

@@ -102,6 +102,23 @@ struct UserProfileWidget : unity::Component {
   { return Field<"_playerTitleWidget", PlayerTitleWidget*>(); }
 };
 
+// ChatMessageWidget.ChatBubble, the texts of one message. A nested class, so its members resolve at run time.
+struct ChatBubble : il2cpp::Object {
+  unity::TMP_Text* Message()
+  { return Field<"Message", unity::TMP_Text*>(); }
+};
+
 struct ChatMessageWidget : unity::Component {
   using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.Chat", "ChatMessageWidget">;
+
+  ChatBubble* chatBubble()
+  { return Field<"_chatBubble", ChatBubble*>(); }
+};
+
+// One line of the chat preview above the HUD.
+struct ChatPreviewMessageWidget : unity::Component {
+  using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.Chat", "ChatPreviewMessageWidget">;
+
+  unity::TMP_Text* text()
+  { return Field<"_text", unity::TMP_Text*>(); }
 };

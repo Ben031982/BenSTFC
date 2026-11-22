@@ -68,6 +68,7 @@ The [shortcut reference](KEYMAPPING.md) lists the defaults.
 - Extend Alliance donations and supported tagged chest-purchase sliders.
 - Limit Daily Goals **Claim All** to selected Federation, Klingon, or Romulan goals. Its toggle can start enabled each session.
   `ui.daily_bulk_claim_factions` lists the factions; blank means all three, and `none` by itself excludes all of them. Other dailies stay eligible.
+- Highlight chat messages that contain one of the words in `[ui] chat_highlight_words`, in `chat_highlight_color`, in full-screen chat, side chat and the chat preview. Installed with `chatpatches`.
 - Hide Galaxy or Veil Chat, and player titles under chat names. Set supported HUD buttons to automatic, always shown, or always hidden.
 - Open alliance side chat once per login, once the station and chat have finished loading, and set side chat's
   starting width. Both are off by default.

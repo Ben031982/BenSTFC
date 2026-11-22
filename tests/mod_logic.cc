@@ -6,6 +6,7 @@
 #include "features/notification_audio.h"
 #include "features/ship_shortcut_hint.h"
 #include "features/toast_text.h"
+#include "features/chat_highlight.h"
 #include "features/fleet_bar.h"
 #include "features/window_placement.h"
 #include "reload.h"
@@ -545,6 +546,42 @@ void FleetBar()
         "fleet notifications are chosen by name, and unknown names are left out");
 }
 
+void ChatHighlight()
+{
+  using namespace chat_highlight;
+  const auto words = Words(" Ben, NGO ,, Armada ");
+  Check(words == std::vector<std::string>{"Ben", "NGO", "Armada"}, "highlight words are trimmed, blanks left out");
+
+  Check(!Mark("Hallo zusammen", words, "#FFD54A", false), "a message without a word stays as it is");
+  Check(!Mark("Benjamin und Armadas", words, "#FFD54A", false), "only whole words count");
+  Check(Mark("armada um 20 Uhr, ben?", words, "#FFD54A", false)
+            == "<mark=#FFD54A33><b><color=#FFD54A>armada</color></b> um 20 Uhr, <b><color=#FFD54A>ben</color></b>?"
+               "</mark>",
+        "words are found in any case and marked with the message");
+  Check(Mark("<color=#ff0000>NGO</color> <link=\"Ben\">x</link>", words, "#FFD54A", false)
+            == "<mark=#FFD54A33><color=#ff0000><b><color=#FFD54A>NGO</color></b></color> <link=\"Ben\">x</link></mark>",
+        "tags are kept and not searched");
+  Check(Mark("<b>NGO</b>", words, "#FFD54A", true)
+            == "<mark=#FFD54A33><noparse><b></noparse><b><color=#FFD54A><noparse>NGO</noparse></color></b>"
+               "<noparse><​/b></noparse></mark>",
+        "a plain-text label shows the message as typed");
+  Check(!Mark("<mark=#FFD54A33>NGO</mark>", words, "#FFD54A", false), "a marked message is not marked again");
+  const std::vector<std::string> umlauts{"Größe"};
+  Check(Mark("Für Größe: Ben!", umlauts, "#FFD54A", false).has_value(),
+        "words with umlauts are found");
+
+  Check(ValidColor("#FFD54A") && ValidColor("#00ff7f") && !ValidColor("FFD54A") && !ValidColor("#FFD54")
+            && !ValidColor("#GGGGGG"),
+        "colors are #RRGGBB");
+  toml::table effective;
+  Check(Config::Parse(toml::table{}, effective, false)->ui.chat_highlight_words.empty()
+            && Config::Parse(toml::table{}, effective, false)->ui.chat_highlight_color == "#FFD54A",
+        "chat highlighting is off by default, in amber");
+  Check(Config::Parse(toml::parse("[ui]\nchat_highlight_color = \"red\""), effective, false)->ui.chat_highlight_color
+            == "#FFD54A",
+        "an invalid highlight color keeps the default");
+}
+
 void WindowPlacement()
 {
   using namespace window_placement;
@@ -812,6 +849,7 @@ int main()
   DailyFactionSettings();
   DefenseSchedule();
   FleetBar();
+  ChatHighlight();
   WindowPlacement();
   UpstreamSettings();
   RenamedSettings();

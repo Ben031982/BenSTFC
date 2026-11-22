@@ -382,6 +382,9 @@ public:
     FleetNotifications fleet_notifications;
     // notify_banner_types and fleet_notifications stay quiet while the game window is in front.
     bool notify_only_in_background = true;
+    // Chat messages with one of these comma-separated words stand out, in this "#RRGGBB" color.
+    std::string chat_highlight_words;
+    std::string chat_highlight_color = "#FFD54A";
   } ui;
 
   struct Sync {

@@ -138,12 +138,16 @@ struct TMP_Text : Behaviour {
   { Set<"raycastTarget">(value); }
   void SetEnableWordWrapping(bool value)
   { Set<"enableWordWrapping">(value); }
+  bool richText()
+  { return Get<"richText", bool>(); }
   void SetRichText(bool value)
   { Set<"richText">(value); }
   void SetOverflowMode(Overflow value)
   { Set<"overflowMode">(value); }
   void SetEnableAutoSizing(bool value)
   { Set<"enableAutoSizing">(value); }
+  std::string text()
+  { return il2cpp::ToUtf8(Get<"text", Il2CppString*>()); }
   void SetText(std::string_view value)
   { Set<"text">(il2cpp::NewString(value)); }
 };
