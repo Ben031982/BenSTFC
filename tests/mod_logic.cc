@@ -607,12 +607,13 @@ void Announcements()
   Check(!Apply(state, Parse("Hallo"), "Ben", 1300), "plain chat changes nothing");
 
   Apply(state, Parse("!NGO Dritte\tmit Tab"), "Ben", 2000);
-  const auto reloaded = Load(Save(state));
+  const auto reloaded = announcements::Load(Save(state));
   Check(reloaded.ended == 1200 && reloaded.current && reloaded.current->posted == 2000
             && reloaded.current->sender == "Ben" && reloaded.current->text == "Dritte mit Tab",
         "the announcement survives a restart");
-  Check(!Load("ended\t3000\n2000\tBen\tAlt\n").current, "an announcement older than the end is not loaded");
-  Check(!Load("kaputt\nnoch\tkaputter\n").current, "a broken file loads as nothing");
+  Check(!announcements::Load("ended\t3000\n2000\tBen\tAlt\n").current,
+        "an announcement older than the end is not loaded");
+  Check(!announcements::Load("kaputt\nnoch\tkaputter\n").current, "a broken file loads as nothing");
 
   Check(Shown(state, 2000 + 7 * 24 * 3600, 7).has_value() && !Shown(state, 2001 + 7 * 24 * 3600, 7),
         "an announcement disappears after the configured days");
