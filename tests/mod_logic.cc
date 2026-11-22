@@ -868,12 +868,14 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
   Check(long_summary->dealt.isolytic == 158629469683712 && long_summary->dealt.isolytic_blocked == 155456880246784
             && long_summary->dealt.mitigated == 10548575076352 && long_summary->dealt.polaron == 0
             && long_summary->taken.polaron == 82927923200 && long_summary->taken.mitigated == 6933458304
-            && long_summary->taken.apex == 1865388512 && long_summary->taken.isolytic == 0,
+            && long_summary->taken.apex == 1865388512 && long_summary->taken.isolytic == 0
+            && long_summary->dealt.infusion == 3655081263104 && long_summary->taken.infusion == 0,
         "the damage by type, dealt and taken");
-  Check(panel.contains("<pos=50%><color=#8FA3B8>Polaron</color><pos=72%>0<pos=87%>83 Mrd")
-            && panel.contains("<pos=50%><color=#8FA3B8>Isolytisch</color><pos=72%>159 Bio<pos=87%>0")
-            && !panel.contains("Krit abgewehrt") && !panel.contains("Infusion"),
-        "the damage table leaves out the types that are 0 both ways, and infusion");
+  Check(panel.contains("<pos=50%><color=#8FA3B8>Polaron</color><pos=72%><color=#5EE07A>0</color><pos=87%>"
+                        "<color=#FF6B6B>83 Mrd</color>")
+            && panel.contains("<pos=50%><color=#8FA3B8>Infusion</color><pos=72%><color=#5EE07A>3,7 Bio</color>")
+            && !panel.contains("Krit abgewehrt"),
+        "the damage table: dealt in green, taken in red, without the types that are 0 both ways");
   Check(!PanelText(*summary).contains("Repariert"), "no repair line without a repair");
 
   // A loss: the ship destroyed by its last hit, the shield untouched, and the loot section only a header.
@@ -919,7 +921,8 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
   Check(loss_panel.starts_with("<size=130%><b><color=#FF6B6B>") && loss_panel.ends_with("Beute</color>\nkeine"),
         "the panel shows a loss in red, without loot");
   Check(DescribeDamage(*loss)
-            == "Schaden nach Art, raus / rein: Isolytisch 23 Bio / 0; Polaron 0 / 9,6 Mrd; Abgemildert 1,5 Bio / 0; "
+            == "Schaden nach Art, raus / rein: Isolytisch 23 Bio / 0; Infusion 358 Mrd / 0; Polaron 0 / 9,6 Mrd; "
+               "Abgemildert 1,5 Bio / 0; "
                "Isolytisch abgewehrt 22 Bio / 0; Apex abgemildert 0 / 0; Krit abgewehrt 0 / 0",
         "the damage by type for the log");
 

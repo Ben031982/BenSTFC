@@ -28,11 +28,13 @@ struct Side {
   int64_t                  shield_left = 0;
 };
 
-// The hits' damage by type, summed over the battle as the game's detailed log shows it. Left out: the game's
-// "standard damage" total, which can be negative, and infusion, whose figures are the hull damage's digits times
-// 1 000 to 100 000, with prevented infusion flipping sign.
+// The hits' damage by type, summed over the battle as the game's detailed log shows it, except infusion: the game's
+// figure for it is the hull damage's digits times 1 000 to 100 000, so infusion here is the hull damage of the hits
+// that carry infusion. Left out: the game's "standard damage" total, which can be negative, and its prevented
+// infusion, which flips sign.
 struct DamageTypes {
   int64_t isolytic         = 0;
+  int64_t infusion         = 0;
   int64_t polaron          = 0;
   // What the target's defenses took off: mitigated standard damage, blocked isolytic damage, the Apex Barrier,
   // and the crit damage mitigation.
@@ -231,6 +233,8 @@ inline std::optional<Summary> Parse(std::string_view csv)
           sums.isolytic += at(20);
           sums.crit_blocked += at(21);
           sums.polaron += at(22);
+          if (cells.size() > 24 && at(24) != 0)
+            sums.infusion += at(14);
         }
       }
     } else if (header.size() == 2) {
@@ -332,15 +336,18 @@ inline std::string PanelText(const Summary& summary)
     left.push_back(plain(name) + "<pos=40%>" + plain(count));
 
   std::vector<std::string> right{grey("Schaden") + "<pos=72%>" + grey("raus") + "<pos=87%>" + grey("rein")};
-  const auto               damage = [&](const char* name, int64_t dealt, int64_t taken) {
+  // Dealt in green, taken in red.
+  const auto damage = [&](const char* name, int64_t dealt, int64_t taken) {
     if (dealt != 0 || taken != 0)
-      right.push_back(grey(name) + "<pos=72%>" + Short(dealt) + "<pos=87%>" + Short(taken));
+      right.push_back(grey(name) + "<pos=72%><color=#5EE07A>" + Short(dealt) + "</color><pos=87%><color=#FF6B6B>"
+                      + Short(taken) + "</color>");
   };
   const auto& out = summary.dealt;
   const auto& in  = summary.taken;
   damage("Hülle", enemy.hull - enemy.hull_left, summary.hull_in);
   damage("Schild", enemy.shield - enemy.shield_left, summary.shield_in);
   damage("Isolytisch", out.isolytic, in.isolytic);
+  damage("Infusion", out.infusion, in.infusion);
   damage("Polaron", out.polaron, in.polaron);
   damage("Abgemildert", out.mitigated, in.mitigated);
   damage("Isolytisch abgewehrt", out.isolytic_blocked, in.isolytic_blocked);
@@ -407,7 +414,7 @@ inline std::string DescribeDamage(const Summary& summary)
     return std::string(name) + " " + Short(dealt) + " / " + Short(taken);
   };
   return "Schaden nach Art, raus / rein: " + pair("Isolytisch", out.isolytic, in.isolytic) + "; "
-         + pair("Polaron", out.polaron, in.polaron) + "; "
+         + pair("Infusion", out.infusion, in.infusion) + "; " + pair("Polaron", out.polaron, in.polaron) + "; "
          + pair("Abgemildert", out.mitigated, in.mitigated) + "; "
          + pair("Isolytisch abgewehrt", out.isolytic_blocked, in.isolytic_blocked) + "; "
          + pair("Apex abgemildert", out.apex, in.apex) + "; " + pair("Krit abgewehrt", out.crit_blocked, in.crit_blocked);
