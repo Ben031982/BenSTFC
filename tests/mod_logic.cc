@@ -441,7 +441,7 @@ loader_defenses = [
   Check(config->graphics.loader_defenses.size() == 2 && config->graphics.loader_defenses[0].system == "Aylus"
             && config->graphics.loader_defenses[1].level == 0,
         "valid defenses are kept and the level is optional");
-  const auto* recorded = effective["graphics"]["loader_defenses"].as_array();
+  const auto* recorded = effective["ngo"]["loader_defenses"].as_array();
   Check(recorded && recorded->size() == 2, "the vars file lists the defenses used");
   Check(config->graphics.defense_timer, "the defense panel is on by default");
   {
@@ -480,7 +480,7 @@ loader_defenses = [
   const auto reminders = Config::Parse(toml::parse("[ui]\ndefense_reminders = \"10, 30, x, 0, 30, 2000\""),
                                        effective, false);
   Check(reminders->ui.defense_reminders == std::vector<int32_t>{30, 10}, "reminder minutes are sorted and checked");
-  Check(effective["ui"]["defense_reminders"].value<std::string>() == "30, 10", "the vars file lists the reminders");
+  Check(effective["ngo"]["defense_reminders"].value<std::string>() == "30, 10", "the vars file lists the reminders");
   Check(Config::Parse(toml::table{}, effective, false)->ui.defense_reminders.empty(), "reminders are off by default");
 }
 
@@ -594,6 +594,23 @@ void ChatHighlight()
   Check(Config::Parse(toml::parse("[ui]\nchat_highlight_color = \"red\""), effective, false)->ui.chat_highlight_color
             == "#FFD54A",
         "an invalid highlight color keeps the default");
+}
+
+void NgoSection()
+{
+  toml::table effective;
+  const auto  ngo = Config::Parse(toml::parse("[ngo]\nfleet_bar_scale = 1.5\ngalaxy_zoom = 3.0"), effective, false);
+  Check(ngo->ui.fleet_bar_scale == 1.5f && ngo->graphics.galaxy_zoom == 3.0f, "[ngo] sets the NGO settings");
+  Check(effective["ngo"]["fleet_bar_scale"].value<float>() == 1.5f && !effective["ui"]["fleet_bar_scale"],
+        "the vars file records them under [ngo]");
+  const auto old = Config::Parse(toml::parse("[ui]\nfleet_bar_scale = 1.2\n[graphics]\ngalaxy_zoom = 2.0"), effective,
+                                 false);
+  Check(old->ui.fleet_bar_scale == 1.2f && old->graphics.galaxy_zoom == 2.0f, "their first sections still work");
+  const auto both = Config::Parse(toml::parse("[ui]\nfleet_bar_scale = 1.2\n[ngo]\nfleet_bar_scale = 2.0"), effective,
+                                  false);
+  Check(both->ui.fleet_bar_scale == 2.0f, "[ngo] wins over the first section");
+  Check(Config::Parse(toml::parse("[ngo]\nui_scale = 0.5"), effective, false)->graphics.ui_scale != 0.5f,
+        "other settings are not read from [ngo]");
 }
 
 void Announcements()
@@ -913,6 +930,7 @@ int main()
   DefenseSchedule();
   FleetBar();
   ChatHighlight();
+  NgoSection();
   Announcements();
   WindowPlacement();
   UpstreamSettings();

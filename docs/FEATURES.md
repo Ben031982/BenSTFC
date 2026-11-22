@@ -17,19 +17,19 @@ Features depend on the game client. A client update can break a hook until the m
 | --- | --- |
 | UI scale | Adjust the main interface, object viewers, and system-view ship models separately. |
 | System zoom | Set the maximum range, entry zoom, keyboard speed, and five presets. Save a preset or the current zoom as the default. |
-| Galaxy zoom | Zoom further out in the galaxy view with `graphics.galaxy_zoom`, and faster with `graphics.galaxy_zoom_speed`, both multiples of the game's own; `1.0` keeps it. Installed with `zoomhooks`. |
+| Galaxy zoom | Zoom further out in the galaxy view with `ngo.galaxy_zoom`, and faster with `ngo.galaxy_zoom_speed`, both multiples of the game's own; `1.0` keeps it. Installed with `zoomhooks`. |
 | Camera movement | Pan with configurable keys and set momentum falloff. Keyboard panning can be disabled. The camera can also stop following a selected target, so you can pan away from it. |
 | Station interior | Zoom further out inside the station. `graphics.interior_zoom_scale` multiplies the native distance; `1.0` keeps it. |
 | Haven | Extend camera range while keeping road surfaces above the ground. `graphics.haven_zoom = 0.0` uses the native range. |
 | Fleet labels | Choose native, expanded, compact, or zoom-threshold detail separately for player and non-player fleets. |
 | Window and cursor | Resize the game window freely on Windows and control whether the game replaces the system cursor. |
 | Transition time | Cut the blur fade when you change between system, galaxy and station to `transition_time` seconds, from 0.02 to 1.0; 0 keeps the game's fade. Installed with `transitionscreenhooks`. |
-| Borderless full screen | Press F11 on Windows to switch between the window and borderless full screen on its monitor; F11 again gives the window back as it was. With `remember_window`, the game starts borderless again. `borderless_fullscreen` in `[graphics]`, on by default; the key is `toggle_borderless`. |
-| Window memory | Reopen the game window on Windows where you left it, with the same size and maximized state. `remember_window` in `[graphics]`; on by default, windowed mode only. |
+| Borderless full screen | Press F11 on Windows to switch between the window and borderless full screen on its monitor; F11 again gives the window back as it was. With `[ngo] remember_window`, the game starts borderless again. `borderless_fullscreen` in `[graphics]`, on by default; the key is `toggle_borderless`. |
+| Window memory | Reopen the game window on Windows where you left it, with the same size and maximized state. `remember_window` in `[ngo]`; on by default, windowed mode only. |
 | Mirror space timer | Show the earliest remaining ship countdown in the viewed Mirror system, below Help All, Engage and Claim. Enable `mirror_space_timer` in `[graphics]`. Disabled by default. |
 | Anomaly timer | Show the remaining time in a Galactic Anomaly system. Disabled by default. |
-| Fleet bar | List the ships 1 to 8 with status, remaining repair, warp or mining time, and cargo while mining, at the side of the system and galaxy views; idle ships stand out. `fleet_bar`, `fleet_bar_side`, `fleet_bar_compact` and `fleet_bar_scale` in `[ui]`; on by default. ALT-T hides and shows it. German text. |
-| Defense timer | Show the next territory defense from `loader_defenses` with its countdown, below the HUD timers. `defense_timer` in `[graphics]`; on by default, empty until defenses are set; `defense_timer_scale` sets its size. German text. |
+| Fleet bar | List the ships 1 to 8 with status, remaining repair, warp or mining time, and cargo while mining, at the side of the system and galaxy views; idle ships stand out. `fleet_bar`, `fleet_bar_side`, `fleet_bar_compact` and `fleet_bar_scale` in `[ngo]`; on by default. ALT-T hides and shows it. German text. |
+| Defense timer | Show the next territory defense from `loader_defenses` with its countdown, below the HUD timers. `defense_timer` in `[ngo]`; on by default, empty until defenses are set; `defense_timer_scale` sets its size. German text. |
 
 `fr_scale` scales system-view backdrop renderables.
 The code reads `system_pan_momentum`, but does not currently apply it.
@@ -68,8 +68,8 @@ The [shortcut reference](KEYMAPPING.md) lists the defaults.
 - Extend Alliance donations and supported tagged chest-purchase sliders.
 - Limit Daily Goals **Claim All** to selected Federation, Klingon, or Romulan goals. Its toggle can start enabled each session.
   `ui.daily_bulk_claim_factions` lists the factions; blank means all three, and `none` by itself excludes all of them. Other dailies stay eligible.
-- Show the alliance leadership's announcements: "!NGO <text>" in alliance chat from the admiral or a commodore becomes a banner at the top of the HUD and stands out in chat, until "!NGO-ENDE" or `[ui] announcement_max_days`. `[ui] announcements`, on by default; ALT-T hides the banner until the next one. Installed with `chatpatches`.
-- Highlight chat messages that contain one of the words in `[ui] chat_highlight_words`, in `chat_highlight_color`, in full-screen chat, side chat and the chat preview. Installed with `chatpatches`.
+- Show the alliance leadership's announcements: "!NGO <text>" in alliance chat from the admiral or a commodore becomes a banner below the chat preview and stands out in chat, until "!NGO-ENDE" or `[ngo] announcement_max_days`. `[ngo] announcements`, on by default; ALT-T hides the banner until the next one. Installed with `chatpatches`.
+- Highlight chat messages that contain one of the words in `[ngo] chat_highlight_words`, in `chat_highlight_color`, in full-screen chat, side chat and the chat preview. Installed with `chatpatches`.
 - Hide Galaxy or Veil Chat, and player titles under chat names. Set supported HUD buttons to automatic, always shown, or always hidden.
 - Open alliance side chat once per login, once the station and chat have finished loading, and set side chat's
   starting width. Both are off by default.
@@ -84,9 +84,9 @@ Other options show the newest Haven help-history entries first, limit ads to the
 
 - Hide selected banner types or use the experimental global banner switch.
 - Send desktop notifications for selected banners on Windows.
-- Send Windows reminders before territory defenses, at the minutes listed in `[ui] defense_reminders`.
-- Send Windows notifications when a ship of the fleet bar finishes a repair, arrives, fills its cargo hold, stops mining or is destroyed, as chosen in `[ui] fleet_notifications`.
-- With `[ui] notify_only_in_background`, on by default, banner and fleet notifications only arrive while the game window is not in front.
+- Send Windows reminders before territory defenses, at the minutes listed in `[ngo] defense_reminders`.
+- Send Windows notifications when a ship of the fleet bar finishes a repair, arrives, fills its cargo hold, stops mining or is destroyed, as chosen in `[ngo] fleet_notifications`.
+- With `[ngo] notify_only_in_background`, on by default, banner and fleet notifications only arrive while the game window is not in front.
 - Play optional victory, defeat, and Armada sounds on Windows and macOS.
 - Suppress named audio events, or use `All` to block named events that start or resume audio.
 - Log audio event names to help build a suppression list.

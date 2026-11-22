@@ -145,6 +145,36 @@ std::string MaskToken(std::string token)
   return token;
 }
 
+// The NGO fork's settings. They live together in [ngo], and are still read from the section they were first added to
+// when [ngo] leaves them out. The vars file records them under [ngo].
+constexpr std::pair<std::string_view, std::string_view> kNgoSettings[] = {
+    {"graphics", "loader_tips"},
+    {"graphics", "loader_tips_replace"},
+    {"graphics", "loader_tips_game_share"},
+    {"graphics", "loader_defenses"},
+    {"graphics", "defense_timer"},
+    {"graphics", "defense_timer_scale"},
+    {"graphics", "remember_window"},
+    {"graphics", "galaxy_zoom"},
+    {"graphics", "galaxy_zoom_speed"},
+    {"ui", "defense_reminders"},
+    {"ui", "fleet_bar"},
+    {"ui", "fleet_bar_side"},
+    {"ui", "fleet_bar_compact"},
+    {"ui", "fleet_bar_scale"},
+    {"ui", "fleet_notifications"},
+    {"ui", "notify_only_in_background"},
+    {"ui", "chat_highlight_words"},
+    {"ui", "chat_highlight_color"},
+    {"ui", "announcements"},
+    {"ui", "announcement_max_days"},
+};
+
+bool NgoSetting(std::string_view section, std::string_view key)
+{
+  return std::ranges::find(kNgoSettings, std::pair{section, key}) != std::end(kNgoSettings);
+}
+
 // Reads settings from the user's file and records every value used in `effective`, which is written out as the
 // runtime vars file so users can see what the mod actually used. A missing or rejected value falls back to the
 // default, which is the member's current value; every rejection logs one warning.
@@ -160,11 +190,15 @@ public:
 
   // The value as written, empty when the file does not set it.
   toml::node_view<const toml::node> Node(std::string_view section, std::string_view key) const
-  { return file_[section][key]; }
+  { return file_[Source(section, key)][key]; }
 
   // The section of the vars file, created on first use.
   toml::table& EffectiveSection(std::string_view section)
   { return *effective_.emplace<toml::table>(section).first->second.as_table(); }
+
+  // The section of the vars file that records `key`: [ngo] for the NGO settings.
+  toml::table& EffectiveFor(std::string_view section, std::string_view key)
+  { return EffectiveSection(Home(section, key)); }
 
   // The configured value converted to T, or `fallback` when missing or of the wrong type. TOML integers read fine
   // into float settings; fractions into int settings do not.
@@ -186,7 +220,7 @@ public:
     Read(section, key, value);
     if (valid(value))
       return;
-    Invalid(section, key, value, fallback);
+    Invalid(Source(section, key), key, value, fallback);
     value = fallback;
     Record(section, key, value);
   }
@@ -210,7 +244,7 @@ public:
     const auto raw      = Get<std::string>(section, key, std::string(fallback));
     const auto found    = std::ranges::find(choices, AsciiStrToLower(StripAsciiWhitespace(raw)), &Choice<E>::name);
     if (found == std::end(choices))
-      Invalid(section, key, raw, fallback);
+      Invalid(Source(section, key), key, raw, fallback);
     else
       value = found->value;
     Record(section, key, std::string(CanonicalName(value, choices)));
@@ -226,12 +260,24 @@ public:
   // Sets the value the vars file shows. A later Record of the same key replaces it.
   template <typename T> void Record(std::string_view section, std::string_view key, const T& value)
   {
-    EffectiveSection(section).insert_or_assign(key, value);
+    EffectiveFor(section, key).insert_or_assign(key, value);
     if (log_)
-      spdlog::debug("config {}.{} = {}", section, key, value);
+      spdlog::debug("config {}.{} = {}", Home(section, key), key, value);
   }
 
 private:
+  // Where an NGO setting belongs.
+  static std::string_view Home(std::string_view section, std::string_view key)
+  { return NgoSetting(section, key) ? "ngo" : section; }
+
+  // The section `key` is read from: [ngo] for an NGO setting, unless only its first section sets it.
+  std::string_view Source(std::string_view section, std::string_view key) const
+  {
+    if (!NgoSetting(section, key))
+      return section;
+    return file_["ngo"][key] || !file_[section][key] ? "ngo" : section;
+  }
+
   // The value converted to T, or `fallback` when missing or, after a warning, of the wrong type.
   template <typename T> T Convert(std::string_view section, std::string_view key, const T& fallback) const
   {
@@ -239,7 +285,7 @@ private:
     if (auto read = node.template value<T>())
       return *read;
     if (node)
-      Invalid(section, key, Raw(node), fallback);
+      Invalid(Source(section, key), key, Raw(node), fallback);
     return fallback;
   }
 
@@ -292,7 +338,7 @@ std::vector<std::string> ReadLoaderTips(Reader& reader)
       recorded.push_back(*text);
     }
   }
-  reader.EffectiveSection("graphics").insert_or_assign("loader_tips", std::move(recorded));
+  reader.EffectiveFor("graphics", "loader_tips").insert_or_assign("loader_tips", std::move(recorded));
   return tips;
 }
 
@@ -330,7 +376,7 @@ std::vector<LoaderDefense> ReadLoaderDefenses(Reader& reader)
       defenses.push_back(std::move(defense));
     }
   }
-  reader.EffectiveSection("graphics").insert_or_assign("loader_defenses", std::move(recorded));
+  reader.EffectiveFor("graphics", "loader_defenses").insert_or_assign("loader_defenses", std::move(recorded));
   return defenses;
 }
 

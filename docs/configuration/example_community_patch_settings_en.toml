@@ -212,25 +212,6 @@ loader_logo_scale = 1.0
 # Show the custom tip on the loading screen
 loader_tip_enabled = true
 
-# Your own loading tips, one string each. They join the mod's built-in tips.
-# loader_tips = ["Armada every evening at 20:00.", "Read the mining rules in the alliance chat."]
-loader_tips = []
-
-# Show only your own tips and defenses, never the mod's built-in tips
-loader_tips_replace = false
-
-# Share of loading screens that keep the game's own tip, from 0.0 (never) to 1.0 (always)
-loader_tips_game_share = 0.5
-
-# Territory defenses, in your computer's local time. The next one replaces the welcome line on the first loading
-# screen and appears among the tips with a countdown; each disappears an hour after it starts.
-# time is "DD.MM. HH:MM", "DD.MM.YYYY HH:MM" or "YYYY-MM-DD HH:MM"; level is optional. The tip text is German.
-# loader_defenses = [
-#   { system = "Aylus", level = 1, time = "27.11. 13:00" },
-#   { system = "Tazolka", level = 1, time = "27.11. 18:00" },
-# ]
-loader_defenses = []
-
 # Set to true to use the loader image for the transition screen
 loader_transition = true
 
@@ -244,7 +225,7 @@ loader_transition_black = false
 allow_cursor = true
 
 # F11 ([shortcuts] toggle_borderless) switches between windowed mode and borderless full screen on the window's
-# monitor. With remember_window, the game starts borderless again if you closed it that way. Windows only, and only
+# monitor. With [ngo] remember_window, the game starts borderless again if you closed it that way. Windows only, and only
 # while the game's own display setting is windowed.
 borderless_fullscreen = true
 
@@ -254,23 +235,12 @@ disable_target_camera_lock = false
 # Allow free resizing, set to false to disable
 free_resize = true
 
-# Reopen the game window where you left it, with the same size and maximized state.
-# Windows only, and only in windowed mode. It is saved beside the vars file with the extension .window.
-remember_window = true
-
 # Show the remaining Galactic Anomaly time below Help All, Engage, and Claim
 galactic_anomaly_timer = false
 
 # Show the earliest Mirror space ship countdown in the viewed system in the same HUD panel.
 # Both HUD timers use [patches] galacticanomalytimerhooks.
 mirror_space_timer = false
-
-# Show the next of loader_defenses with its countdown in a HUD panel below the timers above.
-# It also uses [patches] galacticanomalytimerhooks. The panel text is German.
-defense_timer = true
-
-# The size of the defense panel, from 0.5 to 3.0; 1.0 is the size of the timer panel above it
-defense_timer_scale = 1.5
 
 # After using a zoom preset it will be set as default zoom
 use_presets_as_default = true
@@ -304,6 +274,106 @@ system_zoom_preset_5 = 5000.0
 
 # This controls the maximum zoom distance in System View. Default is 5000. Higher values increase label distance
 zoom = 5000.0
+
+#  <[=====================================================]>
+#
+#       NGO
+#
+#  All settings of the NGO community mod in one place. Older files that still set them in [graphics] or [ui] keep
+#  working; a value here wins.
+#
+#  <[=====================================================]>
+
+[ngo]
+
+# Subgroup: Fleet bar
+# -------------------
+
+# A compact list of your ships 1 to 8 with status and remaining time (repair, warp, mining) at the side of the system
+# and galaxy views. Idle ships stand out. ALT-T ([shortcuts] toggle_fleet_bar) hides and shows it. German text.
+fleet_bar = true
+
+# The side of the screen for fleet_bar: "left" or "right"
+fleet_bar_side = "left"
+
+# Show only each ship's number and its remaining time, or its status when no timer runs
+fleet_bar_compact = false
+
+# How large fleet_bar is drawn, from 0.5 to 2.5: 1.5 makes text and panel half as large again
+fleet_bar_scale = 1.0
+
+# Subgroup: Notifications
+# -----------------------
+
+# Windows notifications when one of your ships 1 to 8 changes state (comma separated): repair (repair done), arrived
+# (warp or impulse ended), cargo_full (cargo hold full while mining), mining_done, destroyed. Blank means none. Also
+# while fleet_bar is hidden or off. German text.
+fleet_notifications = ""
+
+# Send [ui] notify_banner_types and fleet_notifications only while the game window is not in front (Windows)
+notify_only_in_background = true
+
+# Subgroup: Chat
+# --------------
+
+# Chat messages with one of these words (comma separated) stand out in full-screen chat, side chat and the chat
+# preview: the word in bold and color, the message on a faint background. Whole words only; case is ignored for A to Z.
+# Blank means off.
+chat_highlight_words = ""
+
+# The color of chat_highlight_words, as "#RRGGBB"
+chat_highlight_color = "#FFD54A"
+
+# Leadership announcements: when the alliance's admiral or a commodore writes "!NGO <text>" in alliance chat, the text
+# shows as a banner below the chat preview and stands out in chat, until one of them writes "!NGO-ENDE". It is kept
+# across restarts. ALT-T ([shortcuts] toggle_fleet_bar) hides the banner until a new announcement comes. German text.
+announcements = true
+
+# Days after which an announcement disappears on its own, from 1 to 365
+announcement_max_days = 7
+
+# Subgroup: Territory defense
+# ---------------------------
+
+# Territory defenses, in your computer's local time. The next one replaces the welcome line on the first loading
+# screen and appears among the tips with a countdown; each disappears an hour after it starts.
+# time is "DD.MM. HH:MM", "DD.MM.YYYY HH:MM" or "YYYY-MM-DD HH:MM"; level is optional. The tip text is German.
+# loader_defenses = [
+#   { system = "Aylus", level = 1, time = "27.11. 13:00" },
+#   { system = "Tazolka", level = 1, time = "27.11. 18:00" },
+# ]
+loader_defenses = []
+
+# Show the next of loader_defenses with its countdown in a HUD panel below the [graphics] HUD timers.
+# It uses [patches] galacticanomalytimerhooks. The panel text is German.
+defense_timer = true
+
+# The size of the defense panel, from 0.5 to 3.0; 1.0 is the size of the timer panel above it
+defense_timer_scale = 1.5
+
+# Minutes before each of loader_defenses to send a Windows notification (comma separated, e.g. "30, 10").
+# Only the closest reminder is sent when the game starts late. Windows only; the text is German.
+defense_reminders = ""
+
+# Subgroup: Loading screen
+# ------------------------
+
+# Your own loading tips, one string each. They join the mod's built-in tips.
+# loader_tips = ["Armada every evening at 20:00.", "Read the mining rules in the alliance chat."]
+loader_tips = []
+
+# Show only your own tips and defenses, never the mod's built-in tips
+loader_tips_replace = false
+
+# Share of loading screens that keep the game's own tip, from 0.0 (never) to 1.0 (always)
+loader_tips_game_share = 0.5
+
+# Subgroup: Window and view
+# -------------------------
+
+# Reopen the game window where you left it, with the same size and maximized state.
+# Windows only, and only in windowed mode. It is saved beside the vars file with the extension .window.
+remember_window = true
 
 # How far you can zoom out in the galaxy view, as a multiple of the game's own distance, from 1.0 to 10.0. 1.0 keeps
 # the game's.
@@ -533,7 +603,7 @@ set_hotkeys_enabled = "CTRL-ALT-="
 # Switch between windowed mode and borderless full screen (Windows, borderless_fullscreen)
 toggle_borderless = "F11"
 
-# Hide or show the mod's overlays: the fleet list of [ui] fleet_bar and the banner of [ui] announcements
+# Hide or show the mod's overlays: the fleet list of [ngo] fleet_bar and the banner of [ngo] announcements
 toggle_fleet_bar = "ALT-T"
 
 # Show or hide shortcut hints
@@ -834,49 +904,8 @@ disabled_banner_types = ""
 # Specifies banner types that should trigger notifications (comma separated)
 notify_banner_types = ""
 
-# Minutes before each of [graphics] loader_defenses to send a Windows notification (comma separated, e.g. "30, 10").
-# Only the closest reminder is sent when the game starts late. Windows only; the text is German.
-defense_reminders = ""
-
-# A compact list of your ships 1 to 8 with status and remaining time (repair, warp, mining) at the side of the system
-# and galaxy views. Idle ships stand out. ALT-T ([shortcuts] toggle_fleet_bar) hides and shows it. German text.
-fleet_bar = true
-
-# The side of the screen for fleet_bar: "left" or "right"
-fleet_bar_side = "left"
-
-# Show only each ship's number and its remaining time, or its status when no timer runs
-fleet_bar_compact = false
-
-# How large fleet_bar is drawn, from 0.5 to 2.5: 1.5 makes text and panel half as large again
-fleet_bar_scale = 1.0
-
-# Windows notifications when one of your ships 1 to 8 changes state (comma separated): repair (repair done), arrived
-# (warp or impulse ended), cargo_full (cargo hold full while mining), mining_done, destroyed. Blank means none. Also
-# while fleet_bar is hidden or off. German text.
-fleet_notifications = ""
-
-# Send notify_banner_types and fleet_notifications only while the game window is not in front (Windows)
-notify_only_in_background = true
-
 # Subgroup: Chat
 # --------------
-
-# Chat messages with one of these words (comma separated) stand out in full-screen chat, side chat and the chat
-# preview: the word in bold and color, the message on a faint background. Whole words only; case is ignored for A to Z.
-# Blank means off.
-chat_highlight_words = ""
-
-# The color of chat_highlight_words, as "#RRGGBB"
-chat_highlight_color = "#FFD54A"
-
-# Leadership announcements: when the alliance's admiral or a commodore writes "!NGO <text>" in alliance chat, the text
-# shows as a banner at the top of the HUD and stands out in chat, until one of them writes "!NGO-ENDE". It is kept
-# across restarts. toggle_fleet_bar hides the banner until a new announcement comes. German text.
-announcements = true
-
-# Days after which an announcement disappears on its own, from 1 to 365
-announcement_max_days = 7
 
 # Open alliance side chat once per login, after station and chat initialization, section completion, and three continuous seconds of readiness. Requires mod 1.1.10 or newer.
 auto_open_chat = false
