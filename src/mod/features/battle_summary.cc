@@ -1,5 +1,5 @@
-// [ngo] battle_summary: when a battle report is opened, the game's own export of it is summed up in a panel next to
-// the report, and once in the log ("[BattleSummary] ..."). The panel closes with the report. Unity work runs on the
+// [ngo] battle_summary: when a battle report is opened, the game's own export of it is summed up in a panel at the
+// bottom of the report, between the two ships, and once in the log ("[BattleSummary] ..."). The panel closes with the report. Unity work runs on the
 // frame tick; the detours only note which report was asked for.
 
 #include "config.h"
@@ -46,8 +46,8 @@ constexpr float kBattleSummaryFontSize   = 20;
 constexpr float kBattleSummaryLineHeight = 28;
 constexpr float kBattleSummaryPadding    = 18;
 constexpr float kBattleSummaryWidth      = 560;
-// From the screen's right edge.
-constexpr float kBattleSummaryMargin = 32;
+// Centred between the two ships, this far above the screen's bottom edge.
+constexpr float kBattleSummaryBottom = 48;
 
 // The summary of a fetched report, made once; null while it is not fetched or when its export does not parse.
 const battle_summary::Summary* BattleSummaryOf(BattleResultsManager* manager, int64_t id)
@@ -156,7 +156,7 @@ void PlaceBattleSummaryPanel(unity::RectTransform* panel, unity::TMP_Text* label
   // The headline is 30 % larger than the other lines.
   const float          height = (static_cast<float>(lines) + 0.3f) * kBattleSummaryLineHeight * scale + 2 * padding;
   const unity::Vector2 size{kBattleSummaryWidth * scale, height};
-  panel->Place({1, 0.5f}, {1, 0.5f}, {1, 0.5f}, size, {-kBattleSummaryMargin, 0});
+  panel->Place({0.5f, 0}, {0.5f, 0}, {0.5f, 0}, size, {0, kBattleSummaryBottom});
   if (auto* text = battle_summary_text.Get<unity::RectTransform>(); unity::Alive(text))
     text->Place({0, 0}, {1, 1}, {0.5f, 0.5f}, {-2 * padding, -2 * padding}, {0, 0});
   label->SetFontSize(kBattleSummaryFontSize * scale);

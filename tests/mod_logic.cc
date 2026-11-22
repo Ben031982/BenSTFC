@@ -866,6 +866,49 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
   Check(PanelLines(panel) == 21, "the panel's lines");
   Check(!PanelText(*summary).contains("Repariert"), "no repair line without a repair");
 
+  // A loss: the ship destroyed by its last hit, the shield untouched, and the loot section only a header.
+  constexpr std::string_view kLossReport = R"csv(Spielername	Spielerlevel	Ergebnis	Schiffsname	Schiffslevel	Schiffsstärke	Schiff-EP	Offizier Eins	Offizier Zwei	Offizier Drei	Hüllen-TP	Verbleibende Hüllen-TP	Schild-TP	Verbleibende Schild-TP	Standort	Zeitstempel
+Spieler	75	NIEDERLAGE	PRAEFORTIS	35	1042625200128	0	Planetfall Kirk	Planetfall Scotty	Planetfall Uhura	1335244765	0	964361509610	964361509610	Xerionis ∃	22.11.2026 17:54:38
+Föderations-Polaron-Prototyp-∃	70	SIEG	Föderations-Polaron-Prototyp-∃	70	402140463104	0	Captain der Sternenflotte	--	--	481857608283	123791898300	1,5E+16	1,49995446433703E+16	Xerionis ∃	22.11.2026 17:54:38
+
+Belohnungsname	Anzahl
+
+Flottentyp	Angreifen	Verteidigung	Gesundheit	Schiffsfähigkeit	MANÖVER DES CAPTAINS	Offizier-Eins-Fähigkeit	Offizier-Zwei-Fähigkeit	Offizier-Drei-Fähigkeit	Offiziersangriffsbonus	Schaden pro Runde	Panzerungsdurchbruch	Schilddurchbruch	Treffsicherheit	Kritische Trefferchance	Kritischer Schaden	Offiziersverteidigungsbonus	Panzerung	Schildablenkung	Ausweichen	Offiziersgesundheitsbonus	Schild-TP	Hüllen-TP	Impulsgeschwin­digkeit	Warpreichweite	Warpgeschwindigkeit	Frachtkapazität	Geschützte Fracht	Abbaubonus	Debuff angewendet	Buff angewendet
+Spielerflotte 1	163797528080	109239350400	769588330496	Durch den Schleier---Isolytischer Schild	Defensiver Fokus	Zerstörungskraft	Infusionskondensatorverstärkung	Zahlreiche Kondensatoren	56	160859121293	461170695	455286540	1307385805	0,42	6,83	56	1924118880	18167330168	1756420327	56	769154124576	770022538806	235	3803	2712,56	1668520	0	1	NEIN	NEIN
+Feindliche Flotte 1	6230625376	849675650	395060166656	Polaronwaffen­technologie ∃---Experimentelles Verteidigungssys.	--	--	--	--	0	3511663264	113290080	113290080	1132900864	0,1	1,5	0	14161261	141612608	14161261	0	308262731776	481857601536	80	2	2	0	0	1	NEIN	NEIN
+
+Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreifer - Ist Armada?	Zielname	Zielallianz	Zielschiff	Ziel - Ist Armada?	Hyperthermischer Zerfall %	Hyperthermischer Stabilisator %	Kritischer Treffer?	Hüllenschaden	Schildschaden	Abgemilderter Schaden	Abgemilderter Isolytischer Schaden	Abgemilderte Apex-Barriere	Gesamtschaden	Isolytischer Totalschaden	Abgemilderter kritischer Schaden	Polaronschaden	Gemilderter Polaronschaden	Infusionsschaden	Gemilderter Infusionsschaden	Fähigkeitstyp	Fähigkeitswert	Fähigkeitsbezeichnung	Name der Figur mit der Fähigkeit	Ziel besiegt	Ziel zerstört	Waffen laden %
+1	1	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	20000	Zerstörungskraft	Planetfall Kirk	--	--	--
+1	2	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	0,1	Infusionskondensatorverstärkung	Planetfall Scotty	--	--	--
+1	3	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1250	Zahlreiche Kondensatoren	Planetfall Uhura	--	--	--
+1	4	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Defensiver Fokus	Planetfall Kirk	--	--	--
+1	5	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Umgehauen	B'Elanna Torres	--	--	--
+1	6	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Leitender Moraloffizier	Neelix	--	--	--
+1	7	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	0,25	--	Quanten-Windschattenantrieb	--	--	--
+1	8	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	581923520	0	0	0	0	0	0	0	581923520	0	0	0	--	--	--	--	--	--	--
+1	9	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	594580096	0	0	0	0	0	0	0	594580096	0	0	0	--	--	--	--	--	--	--
+1	10	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	189777084416	241341890560	802440085504	11825752047616	0	-1,89807747551396E+16	12067093938176	0	0	0	1,89777081343672E+16	-4058837942272	--	--	--	--	--	--	--
+1	11	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	168288616448	214014738432	711579795456	10486722592768	0	-1,68238011314012E+16	10700737331200	0	0	0	1,68288619079926E+16	4180908179456	--	--	--	--	--	--	--
+1	12	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	JA	845575872	0	0	0	0	0	0	0	8455758848	0	0	0	--	--	--	--	--	--	--
+1	13	Kämpfer vernichtet	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--)csv";
+  const auto loss = Parse(kLossReport);
+  Check(loss && loss->sides[0].result == "NIEDERLAGE" && loss->sides[1].shield == 15000000000000000,
+        "the loss report");
+  Check(loss->rewards.empty() && loss->buffs.empty() && loss->unread.empty(), "a loss without loot");
+  Check(loss->rounds == 1 && loss->hits_out == 2 && loss->hits_in == 3 && loss->crits_out == 2 && loss->crits_in == 1,
+        "the loss's hits and crits");
+  Check(loss->hull_in == 1335244765 && loss->shield_in == 0 && Repaired(*loss) == 0,
+        "a destroyed ship took the hull it had, not the last hit's overkill");
+  Check(Describe(*loss)
+            == "NIEDERLAGE: PRAEFORTIS gegen Föderations-Polaron-Prototyp-∃ (70) in Xerionis ∃, 22.11.2026 17:54:38; "
+               "Runden 1; Treffer 2 raus / 3 rein; Crits 2 raus / 1 rein; Schaden raus 358 Mrd Hülle + 455 Mrd Schild; "
+               "Schaden rein 1,3 Mrd Hülle + 0 Schild; Hülle danach 0 %; Brücke: Planetfall Kirk, Planetfall Scotty, "
+               "Planetfall Uhura; Beute: keine",
+        "the loss's summary line");
+  const auto loss_panel = PanelText(*loss);
+  Check(loss_panel.starts_with("<size=130%><b><color=#FF6B6B>") && loss_panel.ends_with("Beute</color>\nkeine"),
+        "the panel shows a loss in red, without loot");
+
   toml::table effective;
   Check(Config::Parse(toml::table{}, effective, false)->ui.battle_summary, "the battle summary is on by default");
   Check(!Config::Parse(toml::parse("[ngo]\nbattle_summary = false"), effective, false)->ui.battle_summary,

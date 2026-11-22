@@ -221,11 +221,14 @@ inline std::optional<Summary> Parse(std::string_view csv)
       summary.unread.push_back(text);
     }
   }
-  // Without a battle log, the damage taken is what the hull and shield lost.
+  // Without a battle log, the damage taken is what the hull and shield lost; a destroyed ship cannot lose more than
+  // the hull it had, beyond which the last hit is overkill.
+  const auto& side = summary.sides.front();
   if (summary.rounds == 0) {
-    const auto& side  = summary.sides.front();
     summary.hull_in   = side.hull - side.hull_left;
     summary.shield_in = side.shield - side.shield_left;
+  } else if (side.hull_left == 0 && summary.hull_in > side.hull) {
+    summary.hull_in = side.hull;
   }
   return summary;
 }
