@@ -260,5 +260,17 @@ bool ConsiderAnnouncement(ChatMessage* message)
   return true;
 }
 
+std::optional<std::string> AnnouncementTip(bool rich)
+{
+  const auto& ui = Config::Get().ui;
+  if (!ui.announcements)
+    return std::nullopt;
+  LoadAnnouncement();
+  const auto shown = announcements::Shown(announcement_state, std::time(nullptr), ui.announcement_max_days);
+  if (!shown)
+    return std::nullopt;
+  return announcements::TipText(*shown, rich);
+}
+
 const Feature kAnnouncements{"Announcements", &Config::Patches::chatpatches, InstallAnnouncements,
                              AnnouncementsFrame};

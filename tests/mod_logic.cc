@@ -651,6 +651,10 @@ void Announcements()
         "chat timestamps in seconds or milliseconds");
   Check(BannerText({1, "Ben", "<b>Hi</b>"}).find("<noparse><b>Hi<​/b></noparse>") != std::string::npos,
         "the banner shows the text as typed");
+  Check(TipText({1, "Ben", "<b>Hi</b>"}, true).find("von <noparse>Ben</noparse>: <noparse><b>Hi<​/b></noparse>")
+                != std::string::npos
+            && TipText({1, "Ben", "Armada\num 20"}, false) == "NGO-Ankündigung von Ben: Armada um 20",
+        "the loading tip shows the announcement as typed");
   Check(LeaderRank(3, 4) && LeaderRank(1, 0) && !LeaderRank(2, 4) && !LeaderRank(0, 4),
         "the rank next to the admiral's may announce");
   Check(!LeaderRank(4, 4) && !LeaderRank(0, 0), "the admiral's own rank does not, the admiral is known by id");

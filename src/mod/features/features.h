@@ -7,6 +7,8 @@
 
 #include <chrono>
 #include <cstdint>
+#include <optional>
+#include <string>
 
 struct ChatMessage;
 struct NavigationZoom;
@@ -91,6 +93,8 @@ extern const Feature kChat;
 extern const Feature kAnnouncements;
 // Takes up a leadership "!NGO" command from alliance chat, and says whether the message is one.
 bool ConsiderAnnouncement(ChatMessage* message);
+// The current announcement as a loading screen tip, with rich text or without.
+std::optional<std::string> AnnouncementTip(bool rich);
 
 // chat_highlight.cc
 extern const Feature kChatHighlight;

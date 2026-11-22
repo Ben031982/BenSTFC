@@ -326,7 +326,8 @@ chat_highlight_color = "#FFD54A"
 
 # Leadership announcements: when the alliance's admiral or a commodore writes "!NGO <text>" in alliance chat, the text
 # shows as a banner below the chat preview and stands out in chat, until one of them writes "!NGO-ENDE". It is kept
-# across restarts. ALT-T ([shortcuts] toggle_fleet_bar) hides the banner until a new announcement comes. German text.
+# across restarts. ALT-T ([shortcuts] toggle_fleet_bar) hides the banner until a new announcement comes. It is also
+# the first loading screen's tip and joins the loading tips after that. German text.
 announcements = true
 
 # Days after which an announcement disappears on its own, from 1 to 365

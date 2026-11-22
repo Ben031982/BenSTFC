@@ -197,6 +197,15 @@ inline std::string BannerText(const Announcement& announcement)
          + ":</color> " + detail::NoParse(announcement.text);
 }
 
+// The loading screen tip: like the banner, or plain text for a label without rich text.
+inline std::string TipText(const Announcement& announcement, bool rich)
+{
+  if (!rich)
+    return "NGO-Ankündigung von " + detail::OneLine(announcement.sender) + ": " + detail::OneLine(announcement.text);
+  return "<color=#7FD4FF><b>NGO-Ankündigung</b></color> von " + detail::NoParse(announcement.sender) + ": "
+         + detail::NoParse(announcement.text);
+}
+
 // The alliance's ranks are numbered in order, the admiral's at one end; the commodore's is next to it. The admiral is
 // known by user id, so the admiral's own rank does not count: should ranks ever read as all the same, nobody passes.
 inline bool LeaderRank(int64_t sender, int64_t admiral)

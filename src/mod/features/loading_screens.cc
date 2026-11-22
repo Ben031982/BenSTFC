@@ -230,17 +230,19 @@ constexpr LoadingTip kTipTexts[] = {
      10},
 };
 
-// Each of [graphics] loader_tips, and the defense tip, weighed against the built-in tips above.
-constexpr int32_t kOwnTipWeight     = 10;
-constexpr int32_t kDefenseTipWeight = 30;
+// Each of [graphics] loader_tips, the defense tip and the announcement, weighed against the built-in tips above.
+constexpr int32_t kOwnTipWeight          = 10;
+constexpr int32_t kDefenseTipWeight      = 30;
+constexpr int32_t kAnnouncementTipWeight = 40;
 
 constexpr std::string_view kWelcomeTip =
     "Welcome to Star Trek Fleet Command, Supported by the Community Mod "
     "v" VER_FILE_VERSION_STR VERSION_PATCH_STR "! Please check our discord for the latest information!";
 
-// The first loading screen of a session gets the next territory defense from [graphics] loader_defenses, or the
-// welcome line when none is coming. After that, loader_tips_game_share of the screens keep the game's own tip and
-// the rest get one of ours by weight, never the same one twice in a row unless it is the only one.
+// The first loading screen of a session gets the leadership's announcement ([ui] announcements), else the next
+// territory defense from [graphics] loader_defenses, else the welcome line. After that, loader_tips_game_share of the
+// screens keep the game's own tip and the rest get one of ours by weight, never the same one twice in a row unless
+// it is the only one.
 struct TipPicker {
   struct Candidate {
     std::string key;
@@ -252,12 +254,17 @@ struct TipPicker {
   std::string  last;
   std::mt19937 random{std::random_device{}()};
 
-  std::optional<std::string> Next()
+  // `rich` says whether the label shows rich text.
+  std::optional<std::string> Next(bool rich)
   {
-    const auto& graphics = Config::Get().graphics;
-    auto        defense  = defense_schedule::DefenseTip(graphics.loader_defenses, std::time(nullptr));
-    if (std::exchange(first_screen, false))
+    const auto& graphics     = Config::Get().graphics;
+    auto        defense      = defense_schedule::DefenseTip(graphics.loader_defenses, std::time(nullptr));
+    auto        announcement = AnnouncementTip(rich);
+    if (std::exchange(first_screen, false)) {
+      if (announcement)
+        return std::move(*announcement);
       return defense ? std::move(*defense) : std::string(kWelcomeTip);
+    }
     if (std::bernoulli_distribution(graphics.loader_tips_game_share)(random))
       return std::nullopt;
 
@@ -269,6 +276,8 @@ struct TipPicker {
       candidates.push_back({"own" + std::to_string(i), graphics.loader_tips[i], kOwnTipWeight});
     if (defense)
       candidates.push_back({"defense", std::move(*defense), kDefenseTipWeight});
+    if (announcement)
+      candidates.push_back({"announcement", std::move(*announcement), kAnnouncementTipWeight});
     if (candidates.empty())
       return std::nullopt;
 
@@ -293,7 +302,9 @@ void LoadingTipViewController_SetRandomTipLocalisedText_Hook(auto original, Load
   if (!Config::Get().graphics.loader_tip_enabled)
     return;
   auto* label = _this->textMeshPro();
-  if (auto tip = tip_picker.Next(); tip && label)
+  if (!label)
+    return;
+  if (auto tip = tip_picker.Next(label->richText()))
     label->SetText(*tip);
 }
 
