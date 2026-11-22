@@ -3,7 +3,7 @@ name: Validate example configs
 on:
   pull_request:
   push:
-    branches: [main, dev]
+    branches: [main, dev, spielwiese]
 
 permissions:
   contents: read
