@@ -115,6 +115,13 @@ inline std::optional<std::string> Mark(std::string_view text, std::span<const st
   return marked;
 }
 
+// The whole message in `color`, on a faint background of it.
+inline std::string MarkAll(std::string_view text, std::string_view color, bool escape)
+{
+  return "<mark=" + std::string(color) + "33><color=" + std::string(color) + ">"
+         + (escape ? detail::NoParse(text) : std::string(text)) + "</color></mark>";
+}
+
 // "#RRGGBB".
 inline bool ValidColor(std::string_view color)
 {

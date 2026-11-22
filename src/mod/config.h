@@ -385,6 +385,9 @@ public:
     // Chat messages with one of these comma-separated words stand out, in this "#RRGGBB" color.
     std::string chat_highlight_words;
     std::string chat_highlight_color = "#FFD54A";
+    // Leadership announcements from alliance chat, shown for at most this many days.
+    bool    announcements         = true;
+    int32_t announcement_max_days = 7;
   } ui;
 
   struct Sync {

@@ -42,8 +42,10 @@ int32_t fleet_bar_placed_lines   = -1;
 bool    fleet_bar_placed_compact = false;
 bool    fleet_bar_placed_right   = false;
 float   fleet_bar_placed_scale   = 0;
-// Hidden with toggle_fleet_bar until it is pressed again or the game restarts.
-bool fleet_bar_hidden = false;
+// Hidden with toggle_fleet_bar until it is pressed again or the game restarts, with the announcement banner; when it
+// was hidden, in Unix seconds.
+bool    fleet_bar_hidden    = false;
+int64_t fleet_bar_hidden_at = 0;
 // Ship names by localisation id: each lookup allocates a managed object.
 auto& fleet_bar_names = *new std::unordered_map<int64_t, std::string>;
 // Each fleet's row at the last tick, by fleet id, to see what changed.
@@ -284,10 +286,11 @@ void FleetBarFrame()
 {
   const auto& config = Config::Get();
   unity::Key::Poll();
-  if (config.ui.fleet_bar && config.control.hotkeys_enabled && !unity::Key::IsInputFocused()
-      && Shortcut::IsDown(Action::kToggleFleetBar)) {
-    fleet_bar_hidden = !fleet_bar_hidden;
-    spdlog::info("[FleetBar] {}", fleet_bar_hidden ? "hidden" : "shown");
+  if ((config.ui.fleet_bar || config.ui.announcements) && config.control.hotkeys_enabled
+      && !unity::Key::IsInputFocused() && Shortcut::IsDown(Action::kToggleFleetBar)) {
+    fleet_bar_hidden    = !fleet_bar_hidden;
+    fleet_bar_hidden_at = fleet_bar_hidden ? std::time(nullptr) : 0;
+    spdlog::info("[FleetBar] overlays {}", fleet_bar_hidden ? "hidden" : "shown");
   }
 
   static Throttle throttle(std::chrono::milliseconds(500));
@@ -342,3 +345,6 @@ void FleetBarFrame()
 } // namespace
 
 const Feature kFleetBar{"FleetBar", nullptr, nullptr, FleetBarFrame};
+
+int64_t ModOverlaysHiddenAt()
+{ return fleet_bar_hidden_at; }

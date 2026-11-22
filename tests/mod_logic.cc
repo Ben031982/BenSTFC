@@ -6,6 +6,7 @@
 #include "features/notification_audio.h"
 #include "features/ship_shortcut_hint.h"
 #include "features/toast_text.h"
+#include "features/announcements.h"
 #include "features/chat_highlight.h"
 #include "features/fleet_bar.h"
 #include "features/window_placement.h"
@@ -582,6 +583,53 @@ void ChatHighlight()
         "an invalid highlight color keeps the default");
 }
 
+void Announcements()
+{
+  using namespace announcements;
+  const auto set = Parse("!NGO Armada um 20 Uhr");
+  Check(set.command == Command::kSet && set.text == "Armada um 20 Uhr", "!NGO sets an announcement");
+  Check(Parse("  !ngo:  Treffpunkt Vulcan ").text == "Treffpunkt Vulcan", "case, a colon and spaces do not matter");
+  Check(Parse("!NGO-ENDE").command == Command::kEnd && Parse("!ngo-ende danke").command == Command::kEnd,
+        "!NGO-ENDE ends it");
+  Check(Parse("!NGO").command == Command::kNone && Parse("!NGOX hallo").command == Command::kNone
+            && Parse("Hallo !NGO test").command == Command::kNone && Parse("!NGO-ENDEN").command == Command::kNone,
+        "anything else is no command");
+
+  State state;
+  Check(Apply(state, Parse("!NGO Erste"), "Ben", 1000) && state.current->text == "Erste", "a command sets it");
+  Check(!Apply(state, Parse("!NGO Ältere"), "Motarr", 900) && state.current->text == "Erste",
+        "an older announcement does not replace a newer one");
+  Check(Apply(state, Parse("!NGO Zweite"), "Motarr", 1100) && state.current->sender == "Motarr",
+        "a newer one replaces it");
+  Check(Apply(state, Parse("!NGO-ENDE"), "Ben", 1200) && !state.current && state.ended == 1200, "the end clears it");
+  Check(!Apply(state, Parse("!NGO Zweite"), "Motarr", 1100) && !state.current,
+        "history read again does not bring an ended announcement back");
+  Check(!Apply(state, Parse("Hallo"), "Ben", 1300), "plain chat changes nothing");
+
+  Apply(state, Parse("!NGO Dritte\tmit Tab"), "Ben", 2000);
+  const auto reloaded = Load(Save(state));
+  Check(reloaded.ended == 1200 && reloaded.current && reloaded.current->posted == 2000
+            && reloaded.current->sender == "Ben" && reloaded.current->text == "Dritte mit Tab",
+        "the announcement survives a restart");
+  Check(!Load("ended\t3000\n2000\tBen\tAlt\n").current, "an announcement older than the end is not loaded");
+  Check(!Load("kaputt\nnoch\tkaputter\n").current, "a broken file loads as nothing");
+
+  Check(Shown(state, 2000 + 7 * 24 * 3600, 7).has_value() && !Shown(state, 2001 + 7 * 24 * 3600, 7),
+        "an announcement disappears after the configured days");
+  Check(UnixSeconds(1763830000.5) == 1763830000 && UnixSeconds(1763830000500.0) == 1763830000 && UnixSeconds(0) == 0,
+        "chat timestamps in seconds or milliseconds");
+  Check(BannerText({1, "Ben", "<b>Hi</b>"}).find("<noparse><b>Hi<​/b></noparse>") != std::string::npos,
+        "the banner shows the text as typed");
+  Check(LeaderRank(4, 4) && LeaderRank(3, 4) && LeaderRank(1, 0) && !LeaderRank(2, 4) && !LeaderRank(0, 4),
+        "the admiral's rank and the one next to it may announce");
+
+  toml::table effective;
+  const auto  defaults = Config::Parse(toml::table{}, effective, false);
+  Check(defaults->ui.announcements && defaults->ui.announcement_max_days == 7, "announcements are on, for 7 days");
+  Check(Config::Parse(toml::parse("[ui]\nannouncement_max_days = 0"), effective, false)->ui.announcement_max_days == 7,
+        "an invalid number of days keeps the default");
+}
+
 void WindowPlacement()
 {
   using namespace window_placement;
@@ -850,6 +898,7 @@ int main()
   DefenseSchedule();
   FleetBar();
   ChatHighlight();
+  Announcements();
   WindowPlacement();
   UpstreamSettings();
   RenamedSettings();

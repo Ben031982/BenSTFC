@@ -13,7 +13,9 @@
 #include <unity/core.h>
 #include <unity/ui.h>
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -33,7 +35,11 @@ const std::vector<std::string>& ChatHighlightWords()
   return words;
 }
 
-void HighlightChatLabel(unity::TMP_Text* label)
+// The color of a leadership announcement in chat ([ui] announcements).
+constexpr std::string_view kAnnouncementColor = "#7FD4FF";
+
+// Marks the words of chat_highlight_words, or with `announcement` the whole message in its own color.
+void HighlightChatLabel(unity::TMP_Text* label, bool announcement = false)
 {
   if (!unity::Alive(label))
     return;
@@ -41,11 +47,13 @@ void HighlightChatLabel(unity::TMP_Text* label)
   const auto& color = Config::Get().ui.chat_highlight_color;
   const auto  text  = label->text();
   // Marked already: the game left the text as it was.
-  if (text.starts_with("<mark=" + color + "33>"))
+  if (text.starts_with("<mark=#"))
     return;
   const bool turned = chat_highlight_rich.contains(label);
   const bool rich   = label->richText() && !turned;
-  const auto marked = words.empty() ? std::nullopt : chat_highlight::Mark(text, words, color, !rich);
+  const auto marked = announcement   ? std::optional(chat_highlight::MarkAll(text, kAnnouncementColor, !rich))
+                      : words.empty() ? std::nullopt
+                                      : chat_highlight::Mark(text, words, color, !rich);
   if (!marked) {
     if (turned) {
       label->SetRichText(false);
@@ -64,13 +72,13 @@ void ChatMessageWidget_SetWidgetData_Hook(auto original, ChatMessageWidget* _thi
 {
   original(_this);
   auto* bubble = _this->chatBubble();
-  HighlightChatLabel(bubble ? bubble->Message() : nullptr);
+  HighlightChatLabel(bubble ? bubble->Message() : nullptr, ConsiderAnnouncement(_this->Context()));
 }
 
 void ChatPreviewMessageWidget_SetWidgetData_Hook(auto original, ChatPreviewMessageWidget* _this)
 {
   original(_this);
-  HighlightChatLabel(_this->text());
+  HighlightChatLabel(_this->text(), ConsiderAnnouncement(_this->Context()));
 }
 
 bool InstallChatHighlight()

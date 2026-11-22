@@ -137,6 +137,7 @@ constexpr const Feature* kFeatures[] = {
     // chat.cc
     &kChat,
     &kChatHighlight,
+    &kAnnouncements,
     &kChatTitles,
     // confirmations.cc
     &kForbiddenTechConfirm,

@@ -7,6 +7,7 @@
 #include <il2cpp/il2cpp.h>
 
 #include <cstdint>
+#include <string>
 
 enum class ChatChannelCategory : int32_t {
   None            = -1,
@@ -102,6 +103,23 @@ struct UserProfileWidget : unity::Component {
   { return Field<"_playerTitleWidget", PlayerTitleWidget*>(); }
 };
 
+// One chat message, Digit.PrimeServer.Models.Message.
+struct ChatMessage : il2cpp::Object {
+  using Class = il2cpp::Class<"Digit.Client.PrimeLib.Runtime", "Digit.PrimeServer.Models", "Message">;
+
+  bool IsAlliance()
+  { return Get<"IsAlliance", bool>(); }
+  Il2CppString* SenderId()
+  { return Get<"SenderId", Il2CppString*>(); }
+  std::string SenderName()
+  { return il2cpp::ToUtf8(Get<"SenderName", Il2CppString*>()); }
+  std::string RawText()
+  { return il2cpp::ToUtf8(Get<"RawText", Il2CppString*>()); }
+  // Seconds or milliseconds since 1970.
+  double TimeStampDouble()
+  { return Field<"TimeStampDouble", double>(); }
+};
+
 // ChatMessageWidget.ChatBubble, the texts of one message. A nested class, so its members resolve at run time.
 struct ChatBubble : il2cpp::Object {
   unity::TMP_Text* Message()
@@ -113,6 +131,9 @@ struct ChatMessageWidget : unity::Component {
 
   ChatBubble* chatBubble()
   { return Field<"_chatBubble", ChatBubble*>(); }
+  // The message it shows.
+  ChatMessage* Context()
+  { return Get<"Context", ChatMessage*>(); }
 };
 
 // One line of the chat preview above the HUD.
@@ -121,4 +142,6 @@ struct ChatPreviewMessageWidget : unity::Component {
 
   unity::TMP_Text* text()
   { return Field<"_text", unity::TMP_Text*>(); }
+  ChatMessage* Context()
+  { return Get<"Context", ChatMessage*>(); }
 };

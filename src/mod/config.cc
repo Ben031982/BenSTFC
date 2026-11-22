@@ -877,6 +877,8 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Read("ui", "notify_only_in_background", u.notify_only_in_background);
   r.Read("ui", "chat_highlight_words", u.chat_highlight_words);
   r.ReadValid("ui", "chat_highlight_color", u.chat_highlight_color, chat_highlight::ValidColor);
+  r.Read("ui", "announcements", u.announcements);
+  r.ReadValid("ui", "announcement_max_days", u.announcement_max_days, [](int32_t v) { return v >= 1 && v <= 365; });
 
   // [sync]
   auto sync = std::make_shared<Sync>();

@@ -530,7 +530,7 @@ set_hotkeys_enabled = "CTRL-ALT-="
 # Switch between windowed mode and borderless full screen (Windows, borderless_fullscreen)
 toggle_borderless = "F11"
 
-# Hide or show the fleet list of [ui] fleet_bar
+# Hide or show the mod's overlays: the fleet list of [ui] fleet_bar and the banner of [ui] announcements
 toggle_fleet_bar = "ALT-T"
 
 # Show or hide shortcut hints
@@ -866,6 +866,14 @@ chat_highlight_words = ""
 
 # The color of chat_highlight_words, as "#RRGGBB"
 chat_highlight_color = "#FFD54A"
+
+# Leadership announcements: when the alliance's admiral or a commodore writes "!NGO <text>" in alliance chat, the text
+# shows as a banner at the top of the HUD and stands out in chat, until one of them writes "!NGO-ENDE". It is kept
+# across restarts. toggle_fleet_bar hides the banner until a new announcement comes. German text.
+announcements = true
+
+# Days after which an announcement disappears on its own, from 1 to 365
+announcement_max_days = 7
 
 # Open alliance side chat once per login, after station and chat initialization, section completion, and three continuous seconds of readiness. Requires mod 1.1.10 or newer.
 auto_open_chat = false

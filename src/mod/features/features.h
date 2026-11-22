@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstdint>
 
+struct ChatMessage;
 struct NavigationZoom;
 enum class NodeDepth : int32_t;
 
@@ -62,6 +63,8 @@ extern const Feature kAllianceGamesStore;
 // anomaly_timer.cc
 extern const Feature kAnomalyTimer;
 extern const Feature kFleetBar;
+// When toggle_fleet_bar hid the mod's overlays, in Unix seconds; 0 while they show.
+int64_t ModOverlaysHiddenAt();
 
 // audio.cc
 extern const Feature kAudio;
@@ -83,6 +86,11 @@ extern const Feature kInstantCargo;
 
 // chat.cc
 extern const Feature kChat;
+
+// announcements.cc
+extern const Feature kAnnouncements;
+// Takes up a leadership "!NGO" command from alliance chat, and says whether the message is one.
+bool ConsiderAnnouncement(ChatMessage* message);
 
 // chat_highlight.cc
 extern const Feature kChatHighlight;
