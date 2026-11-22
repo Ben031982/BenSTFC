@@ -522,6 +522,9 @@ set_hotkeys_enabled = "CTRL-ALT-="
 # Switch between windowed mode and borderless full screen (Windows, borderless_fullscreen)
 toggle_borderless = "F11"
 
+# Hide or show the fleet list of [ui] fleet_bar
+toggle_fleet_bar = "ALT-T"
+
 # Show or hide shortcut hints
 toggle_shortcut_hints = "HOME"
 
@@ -823,6 +826,16 @@ notify_banner_types = ""
 # Minutes before each of [graphics] loader_defenses to send a Windows notification (comma separated, e.g. "30, 10").
 # Only the closest reminder is sent when the game starts late. Windows only; the text is German.
 defense_reminders = ""
+
+# A compact list of your ships 1 to 8 with status and remaining time (repair, warp, mining) at the side of the system
+# and galaxy views. Idle ships stand out. ALT-T ([shortcuts] toggle_fleet_bar) hides and shows it. German text.
+fleet_bar = true
+
+# The side of the screen for fleet_bar: "left" or "right"
+fleet_bar_side = "left"
+
+# Show only each ship's number and its remaining time, or its status when no timer runs
+fleet_bar_compact = false
 
 # Subgroup: Chat
 # --------------

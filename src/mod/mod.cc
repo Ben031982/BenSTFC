@@ -119,6 +119,7 @@ constexpr const Feature* kFeatures[] = {
     &kAllianceGamesStore,
     // anomaly_timer.cc
     &kAnomalyTimer,
+    &kFleetBar,
     // audio.cc
     &kAudio,
     // buffs.cc

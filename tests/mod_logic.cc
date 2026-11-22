@@ -6,6 +6,7 @@
 #include "features/notification_audio.h"
 #include "features/ship_shortcut_hint.h"
 #include "features/toast_text.h"
+#include "features/fleet_bar.h"
 #include "features/window_placement.h"
 #include "reload.h"
 #include "shortcuts.h"
@@ -468,6 +469,43 @@ loader_defenses = [
   Check(Config::Parse(toml::table{}, effective, false)->ui.defense_reminders.empty(), "reminders are off by default");
 }
 
+void FleetBar()
+{
+  using namespace fleet_bar;
+  Check(Timer(48) == "0:48" && Timer(252) == "4:12" && Timer(5825) == "1:37:05" && Timer(-3) == "0:00",
+        "fleet timers read as m:ss or h:mm:ss");
+  Check(ShortName("Jäger", 14) == "Jäger", "a short name stays whole");
+  Check(ShortName("Schlachtkreuzer", 14) == "Schlachtkreuz.", "a long name is cut to 14 characters with a dot");
+  Check(ShortName("Größenwahnsinn!", 14) == "Größenwahnsin.", "umlauts count as one character");
+  Check(ShortName("Größenwahnsinn", 14) == "Größenwahnsinn", "a name of exactly 14 characters stays whole");
+
+  const Row repairing{1, "Schlachtkreuzer", Status::kRepairing, 252, std::nullopt};
+  const auto line = Line(repairing, false);
+  Check(line.find(">1</color>") != std::string::npos
+            && line.find("<noparse>Schlachtkreuz.</noparse>") != std::string::npos
+            && line.find("Reparatur") != std::string::npos && line.find("4:12") != std::string::npos,
+        "a fleet line has key, name, status and time");
+  const Row mining{3, "Bergbau", Status::kMining, 5825, 42};
+  Check(Line(mining, false).find("Mining 42%") != std::string::npos, "mining shows how full the cargo is");
+  const Row idle{6, "Frachter", Status::kIdle, std::nullopt, std::nullopt};
+  Check(Line(idle, false).find("<color=#F0C26B><noparse>Frachter") != std::string::npos
+            && Line(idle, false).find("<pos=80%>") == std::string::npos,
+        "an idle ship's name stands out, and no timer column is drawn without a timer");
+  Check(Line(repairing, true) == "<color=#8EA3BD>1</color> <color=#F29C50>4:12</color>"
+            && Line(idle, true) == "<color=#8EA3BD>6</color> <color=#F0C26B>Leerlauf</color>",
+        "the compact line has the key and the time, or the status");
+  const Row rows[] = {repairing, idle};
+  Check(Text(rows, true) == Line(repairing, true) + "\n" + Line(idle, true), "one line per ship");
+
+  toml::table effective;
+  const auto  defaults = Config::Parse(toml::table{}, effective, false);
+  Check(defaults->ui.fleet_bar && defaults->ui.fleet_bar_side == FleetBarSide::kLeft && !defaults->ui.fleet_bar_compact,
+        "the fleet bar is on, on the left and full by default");
+  Check(Config::Parse(toml::parse("[ui]\nfleet_bar_side = \"Right\""), effective, false)->ui.fleet_bar_side
+            == FleetBarSide::kRight,
+        "the fleet bar moves to the right");
+}
+
 void WindowPlacement()
 {
   using namespace window_placement;
@@ -721,6 +759,7 @@ int main()
   NotificationAudio();
   DailyFactionSettings();
   DefenseSchedule();
+  FleetBar();
   WindowPlacement();
   UpstreamSettings();
   RenamedSettings();

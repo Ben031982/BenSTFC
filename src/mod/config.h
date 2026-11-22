@@ -96,6 +96,12 @@ enum class NotificationSound : uint8_t {
 // The cue's name as the settings file writes it: "success".
 std::string_view NotificationSoundName(NotificationSound sound);
 
+// [ui] fleet_bar_side.
+enum class FleetBarSide {
+  kLeft,
+  kRight,
+};
+
 enum class MissionHudVisibility {
   kAuto,
   kAlways,
@@ -352,6 +358,10 @@ public:
     std::vector<int> notify_banner_types;
     // Minutes before each of [graphics] loader_defenses to send a Windows notification.
     std::vector<int32_t> defense_reminders;
+    // The ships 1 to 8 with status and remaining time at the side of the system and galaxy views.
+    bool         fleet_bar         = true;
+    FleetBarSide fleet_bar_side    = FleetBarSide::kLeft;
+    bool         fleet_bar_compact = false;
   } ui;
 
   struct Sync {

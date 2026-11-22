@@ -61,6 +61,7 @@ extern const Feature kAllianceGamesStore;
 
 // anomaly_timer.cc
 extern const Feature kAnomalyTimer;
+extern const Feature kFleetBar;
 
 // audio.cc
 extern const Feature kAudio;

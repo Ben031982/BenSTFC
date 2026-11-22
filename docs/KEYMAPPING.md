@@ -131,6 +131,7 @@ Their defaults are `SHIFT-'`, `CTRL-'`, and `L`, with settings `show_alliance_he
 | Restart the game | `F9` | `restart` |
 | Quit the game | `F10` | `quit` |
 | Borderless full screen on or off (Windows) | `F11` | `toggle_borderless` |
+| Hide or show the fleet list | `ALT-T` | `toggle_fleet_bar` |
 | Log trace, debug, info | `CTRL-SHIFT-F7`, `CTRL-SHIFT-F9`, `CTRL-SHIFT-F8` | `log_trace`, `log_debug`, `log_info` |
 | Log warnings, errors, off | `CTRL-SHIFT-F10`, `CTRL-SHIFT-F11`, `CTRL-SHIFT-F12` | `log_warn`, `log_error`, `log_off` |
 

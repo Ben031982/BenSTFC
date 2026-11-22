@@ -88,6 +88,12 @@ constexpr Choice<MissionHudVisibility> kHudVisibility[] = {
     {"", MissionHudVisibility::kAuto},
 };
 
+constexpr Choice<FleetBarSide> kFleetBarSide[] = {
+    {"left", FleetBarSide::kLeft},
+    {"right", FleetBarSide::kRight},
+    {"", FleetBarSide::kLeft},
+};
+
 constexpr Choice<InstantWarpConfirmation> kInstantWarp[] = {
     {"none", InstantWarpConfirmation::kNone},  {"warp", InstantWarpConfirmation::kWarp},
     {"jump", InstantWarpConfirmation::kJump},  {"left", InstantWarpConfirmation::kWarp},
@@ -827,6 +833,9 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   u.disabled_banner_types = ReadBannerTypes(r, "disabled_banner_types");
   u.notify_banner_types   = ReadBannerTypes(r, "notify_banner_types");
   u.defense_reminders     = ReadDefenseReminders(r);
+  r.Read("ui", "fleet_bar", u.fleet_bar);
+  r.Choose("ui", "fleet_bar_side", u.fleet_bar_side, kFleetBarSide);
+  r.Read("ui", "fleet_bar_compact", u.fleet_bar_compact);
 
   // [sync]
   auto sync = std::make_shared<Sync>();

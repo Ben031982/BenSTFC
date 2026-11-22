@@ -27,6 +27,7 @@ Features depend on the game client. A client update can break a hook until the m
 | Window memory | Reopen the game window on Windows where you left it, with the same size and maximized state. `remember_window` in `[graphics]`; on by default, windowed mode only. |
 | Mirror space timer | Show the earliest remaining ship countdown in the viewed Mirror system, below Help All, Engage and Claim. Enable `mirror_space_timer` in `[graphics]`. Disabled by default. |
 | Anomaly timer | Show the remaining time in a Galactic Anomaly system. Disabled by default. |
+| Fleet bar | List the ships 1 to 8 with status, remaining repair, warp or mining time, and cargo while mining, at the side of the system and galaxy views; idle ships stand out. `fleet_bar`, `fleet_bar_side` and `fleet_bar_compact` in `[ui]`; on by default. ALT-T hides and shows it. German text. |
 | Defense timer | Show the next territory defense from `loader_defenses` with its countdown, below the HUD timers. `defense_timer` in `[graphics]`; on by default, empty until defenses are set. German text. |
 
 `fr_scale` scales system-view backdrop renderables.
