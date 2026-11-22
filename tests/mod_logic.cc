@@ -504,6 +504,15 @@ void FleetBar()
   Check(Config::Parse(toml::parse("[ui]\nfleet_bar_side = \"Right\""), effective, false)->ui.fleet_bar_side
             == FleetBarSide::kRight,
         "the fleet bar moves to the right");
+  Check(defaults->ui.fleet_bar_scale == 1.0f, "the fleet bar is drawn at its own size by default");
+  Check(Config::Parse(toml::parse("[ui]
+fleet_bar_scale = 1.5"), effective, false)->ui.fleet_bar_scale == 1.5f,
+        "the fleet bar grows by the scale");
+  for (const auto* text : {"[ui]
+fleet_bar_scale = 0.2", "[ui]
+fleet_bar_scale = 3.0"})
+    Check(Config::Parse(toml::parse(text), effective, false)->ui.fleet_bar_scale == 1.0f,
+          "a fleet bar scale outside 0.5 to 2.5 keeps the default");
 }
 
 void WindowPlacement()

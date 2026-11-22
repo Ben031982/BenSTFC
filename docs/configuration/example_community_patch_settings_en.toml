@@ -837,6 +837,9 @@ fleet_bar_side = "left"
 # Show only each ship's number and its remaining time, or its status when no timer runs
 fleet_bar_compact = false
 
+# How large fleet_bar is drawn, from 0.5 to 2.5: 1.5 makes text and panel half as large again
+fleet_bar_scale = 1.0
+
 # Subgroup: Chat
 # --------------
 

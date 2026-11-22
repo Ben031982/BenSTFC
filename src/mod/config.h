@@ -362,6 +362,8 @@ public:
     bool         fleet_bar         = true;
     FleetBarSide fleet_bar_side    = FleetBarSide::kLeft;
     bool         fleet_bar_compact = false;
+    // How large the fleet bar is drawn, 0.5 to 2.5.
+    float        fleet_bar_scale   = 1.0f;
   } ui;
 
   struct Sync {

@@ -836,6 +836,8 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Read("ui", "fleet_bar", u.fleet_bar);
   r.Choose("ui", "fleet_bar_side", u.fleet_bar_side, kFleetBarSide);
   r.Read("ui", "fleet_bar_compact", u.fleet_bar_compact);
+  r.ReadValid("ui", "fleet_bar_scale", u.fleet_bar_scale,
+              [](float v) { return std::isfinite(v) && v >= 0.5f && v <= 2.5f; });
 
   // [sync]
   auto sync = std::make_shared<Sync>();

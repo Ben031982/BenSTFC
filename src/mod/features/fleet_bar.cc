@@ -32,23 +32,26 @@ namespace
 // the HUD; they are then built again. Never destroyed: freeing a GC handle in a static destructor can run after the
 // runtime has shut down.
 auto&       fleet_bar_label = *new il2cpp::GcHandle;
+auto&       fleet_bar_text  = *new il2cpp::GcHandle;
 auto&       fleet_bar_panel = *new il2cpp::GcHandle;
 std::string fleet_bar_shown_text;
-// The layout last placed: line count, compact, right side. -1 lines forces the first placement.
+// The layout last placed: line count, compact, right side, scale. -1 lines forces the first placement.
 int32_t fleet_bar_placed_lines   = -1;
 bool    fleet_bar_placed_compact = false;
 bool    fleet_bar_placed_right   = false;
+float   fleet_bar_placed_scale   = 0;
 // Hidden with toggle_fleet_bar until it is pressed again or the game restarts.
 bool fleet_bar_hidden = false;
 // Ship names by localisation id: each lookup allocates a managed object.
 auto& fleet_bar_names = *new std::unordered_map<int64_t, std::string>;
 
+// The sizes at [ui] fleet_bar_scale 1; the scale multiplies them all.
 constexpr std::size_t kFleetBarShips       = 8;
-constexpr float       kFleetBarFontSize    = 13;
-constexpr float       kFleetBarLineHeight  = 18;
-constexpr float       kFleetBarPadding     = 12;
-constexpr float       kFleetBarWidth       = 270;
-constexpr float       kFleetBarCompactWide = 110;
+constexpr float       kFleetBarFontSize    = 20;
+constexpr float       kFleetBarLineHeight  = 28;
+constexpr float       kFleetBarPadding     = 16;
+constexpr float       kFleetBarWidth       = 400;
+constexpr float       kFleetBarCompactWide = 160;
 // From the screen's side, and the top edge at this fraction of its height from the bottom.
 constexpr float kFleetBarMargin = 12;
 constexpr float kFleetBarTop    = 0.62f;
@@ -193,10 +196,7 @@ unity::TMP_Text* CreateFleetBar(HudNavigationViewController* nav, unity::Transfo
   auto* label     = text_rect ? text.Get<unity::GameObject>()->AddComponent<unity::TextMeshProUGUI>() : nullptr;
   if (!label)
     return nullptr;
-  // Stretched over the panel, inset by half the padding.
-  text_rect->Place({0, 0}, {1, 1}, {0.5f, 0.5f}, {-kFleetBarPadding, -kFleetBarPadding / 2}, {0, 0});
   label->SetFont(font);
-  label->SetFontSize(kFleetBarFontSize);
   label->SetAlignment(unity::TMP_Text::Alignment::Left);
   label->SetColor({0.89f, 0.93f, 0.96f, 1});
   label->SetRaycastTarget(false);
@@ -204,25 +204,34 @@ unity::TMP_Text* CreateFleetBar(HudNavigationViewController* nav, unity::Transfo
   label->SetRichText(true);
   text.Get<unity::GameObject>()->SetActive(true);
   fleet_bar_label = il2cpp::GcHandle::Strong(label);
+  fleet_bar_text  = il2cpp::GcHandle::Strong(text_rect);
   fleet_bar_panel = il2cpp::GcHandle::Strong(panel_rect);
   fleet_bar_shown_text.clear();
   fleet_bar_placed_lines = -1;
   return label;
 }
 
-void PlaceFleetBar(unity::RectTransform* panel, int32_t lines, bool compact, bool right)
+void PlaceFleetBar(unity::RectTransform* panel, unity::TMP_Text* label, int32_t lines, bool compact, bool right,
+                   float scale)
 {
-  if (lines == fleet_bar_placed_lines && compact == fleet_bar_placed_compact && right == fleet_bar_placed_right)
+  if (lines == fleet_bar_placed_lines && compact == fleet_bar_placed_compact && right == fleet_bar_placed_right
+      && scale == fleet_bar_placed_scale)
     return;
   fleet_bar_placed_lines   = lines;
   fleet_bar_placed_compact = compact;
   fleet_bar_placed_right   = right;
-  const unity::Vector2 size{compact ? kFleetBarCompactWide : kFleetBarWidth,
-                            static_cast<float>(lines) * kFleetBarLineHeight + kFleetBarPadding};
+  fleet_bar_placed_scale   = scale;
+  const float          padding = kFleetBarPadding * scale;
+  const unity::Vector2 size{(compact ? kFleetBarCompactWide : kFleetBarWidth) * scale,
+                            static_cast<float>(lines) * kFleetBarLineHeight * scale + padding};
   if (right)
     panel->Place({1, kFleetBarTop}, {1, kFleetBarTop}, {1, 1}, size, {-kFleetBarMargin, 0});
   else
     panel->Place({0, kFleetBarTop}, {0, kFleetBarTop}, {0, 1}, size, {kFleetBarMargin, 0});
+  // The text is stretched over the panel, inset by half the padding.
+  if (auto* text = fleet_bar_text.Get<unity::RectTransform>(); unity::Alive(text))
+    text->Place({0, 0}, {1, 1}, {0.5f, 0.5f}, {-padding, -padding / 2}, {0, 0});
+  label->SetFontSize(kFleetBarFontSize * scale);
 }
 
 void FleetBarFrame()
@@ -268,7 +277,8 @@ void FleetBarFrame()
     fleet_bar_shown_text = std::move(text);
     label->SetText(fleet_bar_shown_text);
   }
-  PlaceFleetBar(panel, static_cast<int32_t>(rows.size()), compact, config.ui.fleet_bar_side == FleetBarSide::kRight);
+  PlaceFleetBar(panel, label, static_cast<int32_t>(rows.size()), compact,
+                config.ui.fleet_bar_side == FleetBarSide::kRight, config.ui.fleet_bar_scale);
   if (auto* object = label->ParentObject())
     object->SetActive(true);
 }
