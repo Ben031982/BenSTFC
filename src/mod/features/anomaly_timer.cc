@@ -204,6 +204,8 @@ float       defense_placed_scale  = 0;
 
 constexpr float kDefensePanelWidth  = 270;
 constexpr float kDefensePanelHeight = 52;
+// From the right edge the panel had at its own size, so a larger one stays on screen.
+constexpr float kDefensePanelInset = 20;
 
 // The drawer holding Help All / Engage / Claim, which both panels hang under. Null while it is not up.
 unity::Transform* DefenseDrawerParent()
@@ -291,10 +293,10 @@ void DefensePanelFrame()
   }
   if (defense_below_anomaly != anomaly_panel_shown) {
     defense_below_anomaly = anomaly_panel_shown;
-    panel->Place({0.5f, 0}, {0.5f, 0}, {0.5f, 1}, {kDefensePanelWidth, kDefensePanelHeight},
-                 {0, anomaly_panel_shown ? -84.0f : -40.0f});
+    panel->Place({0.5f, 0}, {0.5f, 0}, {1, 1}, {kDefensePanelWidth, kDefensePanelHeight},
+                 {kDefensePanelWidth / 2 - kDefensePanelInset, anomaly_panel_shown ? -84.0f : -40.0f});
   }
-  // Scaled around its top edge, so the gap to the panel above stays.
+  // Scaled around its top right corner: the gap to the panel above and to the screen edge stays.
   if (const float scale = graphics.defense_timer_scale; scale != defense_placed_scale) {
     defense_placed_scale = scale;
     panel->SetLocalScale({scale, scale, 1});

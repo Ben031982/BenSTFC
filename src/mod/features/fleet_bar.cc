@@ -59,7 +59,7 @@ constexpr float       kFleetBarPadding     = 16;
 constexpr float       kFleetBarWidth       = 480;
 constexpr float       kFleetBarCompactWide = 160;
 // From the screen's side, and the top edge at this fraction of its height from the bottom.
-constexpr float kFleetBarMargin = 12;
+constexpr float kFleetBarMargin = 32;
 constexpr float kFleetBarTop    = 0.62f;
 
 fleet_bar::Status FleetBarStatus(FleetState state)

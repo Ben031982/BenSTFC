@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -41,6 +42,8 @@ int64_t announcement_received = 0;
 auto& announcement_checked = *new std::unordered_map<std::string, bool>;
 // Senders whose rank has been logged.
 auto& announcement_logged = *new std::unordered_set<std::string>;
+// Senders logged as waiting for the alliance to load.
+auto& announcement_waiting = *new std::unordered_set<std::string>;
 
 std::filesystem::path AnnouncementFile()
 {
@@ -72,23 +75,27 @@ void SaveAnnouncement()
     spdlog::warn("[Announcements] could not save {}", AnnouncementFile().string());
 }
 
-// The admiral, or a member whose rank is next to the admiral's.
-bool AnnouncementLeader(ChatMessage* message, const std::string& sender_id)
+// The admiral, or a member whose rank is next to the admiral's; nothing while the alliance is not loaded yet.
+std::optional<bool> AnnouncementLeader(ChatMessage* message, const std::string& sender_id)
 {
   auto* manager = AllianceManager::Existing();
   auto* profile = manager ? manager->GetLocalAllianceProfile() : nullptr;
   auto* leader  = profile ? profile->LeaderUserId() : nullptr;
   if (!leader || sender_id.empty()) {
-    spdlog::info("[Announcements] the alliance's admiral is not known yet; {} is not checked", message->SenderName());
-    return false;
+    if (announcement_waiting.insert(sender_id).second)
+      spdlog::info("[Announcements] the alliance's admiral is not known yet; {} is checked later",
+                   message->SenderName());
+    return std::nullopt;
   }
   if (il2cpp::ToUtf8(leader) == sender_id)
     return true;
   auto* member  = profile->Member(message->SenderId());
   auto* admiral = profile->Member(leader);
   if (!member || !admiral) {
-    spdlog::info("[Announcements] the ranks of {} and the admiral are not known", message->SenderName());
-    return false;
+    if (announcement_waiting.insert(sender_id).second)
+      spdlog::info("[Announcements] the ranks of {} and the admiral are not known yet; checked later",
+                   message->SenderName());
+    return std::nullopt;
   }
   const bool accepted = announcements::LeaderRank(member->Rank(), admiral->Rank());
   if (announcement_logged.insert(sender_id).second)
@@ -231,9 +238,12 @@ bool ConsiderAnnouncement(ChatMessage* message)
   const auto    key       = sender_id + "|" + std::to_string(posted);
   auto          checked   = announcement_checked.find(key);
   if (checked == announcement_checked.end()) {
+    const auto leader = AnnouncementLeader(message, sender_id);
+    if (!leader)
+      return false;
     if (announcement_checked.size() > 256)
       announcement_checked.clear();
-    checked = announcement_checked.emplace(key, AnnouncementLeader(message, sender_id)).first;
+    checked = announcement_checked.emplace(key, *leader).first;
   }
   if (!checked->second)
     return false;
