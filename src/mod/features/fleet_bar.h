@@ -177,9 +177,9 @@ inline std::string Line(const Row& row, bool compact)
     status += " " + std::to_string(*row.cargo_percent) + "%";
   const std::string name_color = row.status == Status::kIdle ? color : std::string("#E4ECF5");
   std::string       line       = key + "<color=" + name_color + "><noparse>" + ShortName(row.name, kNameLength)
-                     + "</noparse></color><pos=52%><color=" + color + ">" + status + "</color>";
+                     + "</noparse></color><pos=47%><color=" + color + ">" + status + "</color>";
   if (row.remaining)
-    line += "<pos=80%><color=" + color + ">" + Timer(*row.remaining) + "</color>";
+    line += "<pos=77%><color=" + color + ">" + Timer(*row.remaining) + "</color>";
   return line;
 }
 

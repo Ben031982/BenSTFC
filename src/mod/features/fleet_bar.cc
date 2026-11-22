@@ -54,7 +54,7 @@ constexpr std::size_t kFleetBarShips       = 8;
 constexpr float       kFleetBarFontSize    = 20;
 constexpr float       kFleetBarLineHeight  = 28;
 constexpr float       kFleetBarPadding     = 16;
-constexpr float       kFleetBarWidth       = 400;
+constexpr float       kFleetBarWidth       = 480;
 constexpr float       kFleetBarCompactWide = 160;
 // From the screen's side, and the top edge at this fraction of its height from the bottom.
 constexpr float kFleetBarMargin = 12;

@@ -490,7 +490,7 @@ void FleetBar()
   Check(Line(mining, false).find("Mining 42%") != std::string::npos, "mining shows how full the cargo is");
   const Row idle{6, "Frachter", Status::kIdle, std::nullopt, std::nullopt};
   Check(Line(idle, false).find("<color=#F0C26B><noparse>Frachter") != std::string::npos
-            && Line(idle, false).find("<pos=80%>") == std::string::npos,
+            && Line(idle, false).find("<pos=77%>") == std::string::npos,
         "an idle ship's name stands out, and no timer column is drawn without a timer");
   Check(Line(repairing, true) == "<color=#8EA3BD>1</color> <color=#F29C50>4:12</color>"
             && Line(idle, true) == "<color=#8EA3BD>6</color> <color=#F0C26B>Leerlauf</color>",
