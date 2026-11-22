@@ -571,6 +571,19 @@ void WindowPlacement()
   Check(Config::Parse(toml::parse("[graphics]\ntransition_time = 0"), effective, false)->graphics.transition_time
             == 0.0f,
         "0 keeps the game's fade");
+  {
+    const auto galaxy = Config::Parse(toml::table{}, effective, false);
+    Check(galaxy->graphics.galaxy_zoom == 1.0f && galaxy->graphics.galaxy_zoom_speed == 1.0f,
+          "the galaxy zoom is the game's by default");
+    const auto wider = Config::Parse(toml::parse("[graphics]\ngalaxy_zoom = 2.5\ngalaxy_zoom_speed = 0.5"), effective,
+                                     false);
+    Check(wider->graphics.galaxy_zoom == 2.5f && wider->graphics.galaxy_zoom_speed == 0.5f,
+          "the galaxy zoom and its speed are read");
+    const auto bad = Config::Parse(toml::parse("[graphics]\ngalaxy_zoom = 0.5\ngalaxy_zoom_speed = 20.0"), effective,
+                                   false);
+    Check(bad->graphics.galaxy_zoom == 1.0f && bad->graphics.galaxy_zoom_speed == 1.0f,
+          "a galaxy zoom below 1, or a speed outside 0.25 to 10, keeps the game's");
+  }
 }
 
 void UpstreamSettings()

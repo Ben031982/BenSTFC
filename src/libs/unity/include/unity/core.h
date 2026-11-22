@@ -290,6 +290,8 @@ struct Camera : il2cpp::Object {
     Nothing    = 4,
   };
 
+  float farClipPlane()
+  { return Get<"farClipPlane", float>(); }
   void SetFarClipPlane(float value)
   { Set<"farClipPlane">(value); }
   void SetClearFlags(ClearFlags value)

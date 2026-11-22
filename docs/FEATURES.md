@@ -17,6 +17,7 @@ Features depend on the game client. A client update can break a hook until the m
 | --- | --- |
 | UI scale | Adjust the main interface, object viewers, and system-view ship models separately. |
 | System zoom | Set the maximum range, entry zoom, keyboard speed, and five presets. Save a preset or the current zoom as the default. |
+| Galaxy zoom | Zoom further out in the galaxy view with `graphics.galaxy_zoom`, and faster with `graphics.galaxy_zoom_speed`, both multiples of the game's own; `1.0` keeps it. Installed with `zoomhooks`. |
 | Camera movement | Pan with configurable keys and set momentum falloff. Keyboard panning can be disabled. The camera can also stop following a selected target, so you can pan away from it. |
 | Station interior | Zoom further out inside the station. `graphics.interior_zoom_scale` multiplies the native distance; `1.0` keeps it. |
 | Haven | Extend camera range while keeping road surfaces above the ground. `graphics.haven_zoom = 0.0` uses the native range. |

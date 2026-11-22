@@ -302,6 +302,14 @@ system_zoom_preset_5 = 5000.0
 # This controls the maximum zoom distance in System View. Default is 5000. Higher values increase label distance
 zoom = 5000.0
 
+# How far you can zoom out in the galaxy view, as a multiple of the game's own distance, from 1.0 to 10.0. 1.0 keeps
+# the game's.
+galaxy_zoom = 1.0
+
+# How fast the mouse wheel zooms in the galaxy view, as a multiple of the game's own speed, from 0.25 to 10.0. 1.0
+# keeps the game's.
+galaxy_zoom_speed = 1.0
+
 #  <[=====================================================]>
 #
 #       ****           *            *

@@ -728,6 +728,10 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Read("graphics", "ui_scale_ship", g.ui_scale_ship);
   r.Read("graphics", "ui_scale_viewer", g.ui_scale_viewer);
   r.Read("graphics", "zoom", g.zoom);
+  r.ReadValid("graphics", "galaxy_zoom", g.galaxy_zoom,
+              [](float v) { return std::isfinite(v) && v >= 1.0f && v <= 10.0f; });
+  r.ReadValid("graphics", "galaxy_zoom_speed", g.galaxy_zoom_speed,
+              [](float v) { return std::isfinite(v) && v >= 0.25f && v <= 10.0f; });
   r.ReadValid("graphics", "haven_zoom", g.haven_zoom, [](float v) { return std::isfinite(v) && v >= 0.0f; });
   r.ReadValid("graphics", "interior_zoom_scale", g.interior_zoom_scale,
               [](float v) { return std::isfinite(v) && v >= 1.0f; });

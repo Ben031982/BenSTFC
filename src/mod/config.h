@@ -237,6 +237,9 @@ public:
     float ui_scale_viewer = 1.2f;
     // The farthest system zoom; presets and zoom shortcuts are in the same unit.
     float zoom       = 5000.0f;
+    // The galaxy view's farthest zoom and its zoom speed, as multiples of the game's own.
+    float galaxy_zoom       = 1.0f;
+    float galaxy_zoom_speed = 1.0f;
     float haven_zoom = 4000.0f;
     // A multiple of the station interior's own zoom-out distance, at least 1.
     float             interior_zoom_scale = 2.0f;

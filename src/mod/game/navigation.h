@@ -113,6 +113,23 @@ struct NavigationZoom : il2cpp::Object {
   void SetFarRatioSystemExtended(float value)
   { SetField<"_farRatioSystemExtended">(value); }
 
+  // The zoom speed of the current depth, and the galaxy's own that it is taken from.
+  float zoomspeed()
+  { return Field<"_zoomspeed", float>(); }
+  void SetZoomspeed(float value)
+  { SetField<"_zoomspeed">(value); }
+  float zoomspeedGalaxy()
+  { return Field<"_zoomspeedGalaxy", float>(); }
+  void SetZoomspeedGalaxy(float value)
+  { SetField<"_zoomspeedGalaxy">(value); }
+  float farLevelGalaxy()
+  { return Field<"_farLevelGalaxy", float>(); }
+  // How far the galaxy camera draws.
+  float galaxyFarClippingPlane()
+  { return Field<"_galaxyFarClippingPlane", float>(); }
+  void SetGalaxyFarClippingPlane(float value)
+  { SetField<"_galaxyFarClippingPlane">(value); }
+
   void ZoomCameraAtWorldPoint()
   { Call<"ZoomCameraAtWorldPoint">(); }
 };

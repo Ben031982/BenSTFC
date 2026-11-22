@@ -1,7 +1,8 @@
 // The camera in system view and at the station: the extended zoom range, keyboard zoom and its presets, planet
 // sprite scaling, keyboard panning, pan momentum and the target camera lock, keyboard rotation around the station,
-// held touches that keep panning, and [graphics] interior_zoom_scale inside the station. Fleet label detail, which
-// follows the zoom, is in fleet_labels.cc; Haven's camera is in haven.cc.
+// held touches that keep panning, and [graphics] interior_zoom_scale inside the station. Also [graphics] galaxy_zoom
+// and galaxy_zoom_speed in the galaxy view. Fleet label detail, which follows the zoom, is in fleet_labels.cc;
+// Haven's camera is in haven.cc.
 
 #include "config.h"
 #include "features/features.h"
@@ -21,6 +22,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <unordered_map>
 
 namespace
@@ -182,11 +184,63 @@ bool KeyboardZoom(NavigationZoom* zoom)
   return true;
 }
 
+// --- Galaxy zoom ---
+
+// [graphics] galaxy_zoom and galaxy_zoom_speed: the galaxy view's farthest zoom and its zoom speed as multiples of
+// the game's own, taken from the first galaxy update before anything is changed. The camera draws as much further.
+// Like the system range, they are applied around every update, since the game sets them again on entering.
+struct GalaxyZoomNative {
+  float maximum = 0;
+  float speed   = 0;
+  float clip    = 0;
+};
+std::optional<GalaxyZoomNative> galaxy_zoom_native;
+
+void KeepGalaxyZoom(NavigationZoom* zoom)
+{
+  if (zoom->depth() != NodeDepth::Galaxy || !(zoom->maximum() > zoom->minimum()))
+    return;
+  if (!galaxy_zoom_native) {
+    auto* camera       = zoom->sceneCamera();
+    galaxy_zoom_native = GalaxyZoomNative{
+        .maximum = zoom->maximum(),
+        .speed   = zoom->zoomspeedGalaxy() > 0 ? zoom->zoomspeedGalaxy() : zoom->zoomspeed(),
+        .clip    = zoom->galaxyFarClippingPlane() > 0 ? zoom->galaxyFarClippingPlane()
+                                                      : (camera ? camera->farClipPlane() : 0.0f),
+    };
+    spdlog::info("[GalaxyZoom] the game's galaxy zoom: range [{}, {}], far level {}, speed {} (now {}), far clip {}"
+                 " (camera {}), distance {}",
+                 zoom->minimum(), zoom->maximum(), zoom->farLevelGalaxy(), zoom->zoomspeedGalaxy(), zoom->zoomspeed(),
+                 zoom->galaxyFarClippingPlane(), camera ? camera->farClipPlane() : 0.0f, zoom->Distance());
+  }
+  const auto& native = *galaxy_zoom_native;
+  const auto& config = Config::Get().graphics;
+
+  const float maximum = native.maximum * config.galaxy_zoom;
+  if (zoom->maximum() != maximum) {
+    zoom->SetMaximum(maximum);
+    if (const auto total = maximum - zoom->minimum(); total > 0.0f)
+      zoom->SetZoomtotal(total);
+  }
+  if (native.speed > 0) {
+    const float speed = native.speed * config.galaxy_zoom_speed;
+    zoom->SetZoomspeedGalaxy(speed);
+    zoom->SetZoomspeed(speed);
+  }
+  if (native.clip > 0) {
+    const float clip = native.clip * config.galaxy_zoom;
+    zoom->SetGalaxyFarClippingPlane(clip);
+    if (auto* camera = zoom->sceneCamera(); camera && camera->farClipPlane() < clip)
+      camera->SetFarClipPlane(clip);
+  }
+}
+
 void NavigationZoom_Update_Hook(auto original, NavigationZoom* _this)
 {
   unity::Key::Poll();
   FleetLabelsFollowDepth(_this, _this->depth());
   KeepZoomRange(_this);
+  KeepGalaxyZoom(_this);
 
   // Initial and cached views can enter through SetDepth without SetViewParameters on macOS. Observe the actual
   // depth in the existing update hook, including the first update of a controller already in a system.
@@ -196,6 +250,7 @@ void NavigationZoom_Update_Hook(auto original, NavigationZoom* _this)
 
   original(_this);
   KeepZoomRange(_this);
+  KeepGalaxyZoom(_this);
   // Native entry work can reset the distance and range in Update. Apply after it, using the same range that
   // presets and the reset shortcut see once the system is ready. Keep the request while its camera is not ready.
   auto& entry = ObserveZoomDepth(_this);
