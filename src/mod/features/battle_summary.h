@@ -33,11 +33,16 @@ struct Summary {
   std::string                                      location;
   std::string                                      time;
   std::vector<std::pair<std::string, std::string>> rewards;
+  // Later two-column sections, such as the galactic anomalies' buffs: not loot.
+  std::vector<std::pair<std::string, std::string>> buffs;
   int32_t                                          rounds    = 0;
   int32_t                                          hits_out  = 0;
   int32_t                                          hits_in   = 0;
   int32_t                                          crits_out = 0;
   int32_t                                          crits_in  = 0;
+  // The damage the player took, hit by hit; more than the hull lost when it was repaired during the battle.
+  int64_t hull_in   = 0;
+  int64_t shield_in = 0;
   // The header rows of sections this does not read yet, for the log.
   std::vector<std::string> unread;
 };
@@ -56,13 +61,55 @@ namespace detail
     }
   }
 
-  inline std::optional<int64_t> Number(std::string_view text)
+  inline std::optional<int64_t> Integer(std::string_view text)
   {
     int64_t    value        = 0;
     const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
     if (text.empty() || error != std::errc{} || end != text.data() + text.size())
       return std::nullopt;
     return value;
+  }
+
+  // A whole number, also as the export writes large ones: "1,50000000000001E+16". Rounded; without floating point.
+  inline std::optional<int64_t> Number(std::string_view text)
+  {
+    if (const auto value = Integer(text))
+      return value;
+    const auto exponent_at = text.find_first_of("Ee");
+    int64_t    exponent    = 0;
+    if (exponent_at != std::string_view::npos) {
+      auto exponent_text = text.substr(exponent_at + 1);
+      if (!exponent_text.empty() && exponent_text.front() == '+')
+        exponent_text.remove_prefix(1);
+      const auto parsed = Integer(exponent_text);
+      if (!parsed || *parsed < -30 || *parsed > 30)
+        return std::nullopt;
+      exponent = *parsed;
+      text     = text.substr(0, exponent_at);
+    }
+    const bool negative = !text.empty() && text.front() == '-';
+    if (negative)
+      text.remove_prefix(1);
+    const auto separator = text.find_first_of(",.");
+    const auto whole     = text.substr(0, separator);
+    const auto fraction  = separator == std::string_view::npos ? std::string_view{} : text.substr(separator + 1);
+    constexpr std::string_view kDigits = "0123456789";
+    if (whole.empty() || whole.size() + fraction.size() > 18 || whole.find_first_not_of(kDigits) != whole.npos
+        || fraction.find_first_not_of(kDigits) != fraction.npos)
+      return std::nullopt;
+    int64_t digits = 0;
+    for (const auto part : {whole, fraction})
+      for (const char digit : part)
+        digits = digits * 10 + (digit - '0');
+    exponent -= static_cast<int64_t>(fraction.size());
+    for (; exponent > 0; --exponent) {
+      if (digits > INT64_MAX / 10)
+        return std::nullopt;
+      digits *= 10;
+    }
+    for (; exponent < 0; ++exponent)
+      digits = exponent == -1 ? (digits + 5) / 10 : digits / 10;
+    return negative ? -digits : digits;
   }
 
   inline bool Yes(std::string_view text)
@@ -125,7 +172,8 @@ inline std::optional<Summary> Parse(std::string_view csv)
   }
   if (summary.sides.size() < 2)
     return std::nullopt;
-  const auto& player = summary.sides.front().name;
+  const auto& player    = summary.sides.front().name;
+  bool        loot_read = false;
 
   for (size_t index = 1; index < sections.size(); ++index) {
     const auto& section = sections[index];
@@ -146,11 +194,18 @@ inline std::optional<Summary> Parse(std::string_view csv)
         (out ? summary.hits_out : summary.hits_in) += 1;
         if (Yes(cells[13]))
           (out ? summary.crits_out : summary.crits_in) += 1;
+        if (!out) {
+          summary.hull_in += Number(cells[14]).value_or(0);
+          summary.shield_in += Number(cells[15]).value_or(0);
+        }
       }
     } else if (header.size() == 2) {
+      // The loot comes first; a later two-column section holds buffs.
+      auto& pairs = loot_read ? summary.buffs : summary.rewards;
+      loot_read   = true;
       for (size_t row = 1; row < section.size(); ++row)
         if (section[row].size() >= 2)
-          summary.rewards.emplace_back(std::string(section[row][0]), std::string(section[row][1]));
+          pairs.emplace_back(std::string(section[row][0]), std::string(section[row][1]));
     } else if (!(header.size() >= 20 && section.size() > 1 && !Number(section[1][0]))) {
       // Not the fleet stats either: unknown so far, such as cargo taken.
       std::string text;
@@ -159,7 +214,22 @@ inline std::optional<Summary> Parse(std::string_view csv)
       summary.unread.push_back(text);
     }
   }
+  // Without a battle log, the damage taken is what the hull and shield lost.
+  if (summary.rounds == 0) {
+    const auto& side  = summary.sides.front();
+    summary.hull_in   = side.hull - side.hull_left;
+    summary.shield_in = side.shield - side.shield_left;
+  }
   return summary;
+}
+
+// The hull repaired during the battle: what the hits took beyond what the hull lost. Nothing when the ship was
+// destroyed (the last hit's overkill is no repair) or for rounding noise below 1 %.
+inline int64_t Repaired(const Summary& summary)
+{
+  const auto& player   = summary.sides.front();
+  const auto  repaired = summary.hull_in - (player.hull - player.hull_left);
+  return player.hull_left > 0 && repaired > 0 && repaired * 100 >= summary.hull_in ? repaired : 0;
 }
 
 // "1,24 Mrd", "312 Tsd" or "950": short enough for the panel.
@@ -177,6 +247,8 @@ inline std::string Short(int64_t value)
   };
   if (value < 0)
     return "-" + Short(-value);
+  if (value >= 1'000'000'000'000)
+    return scaled(value, 1'000'000'000'000, "Bio");
   if (value >= 1'000'000'000)
     return scaled(value, 1'000'000'000, "Mrd");
   if (value >= 1'000'000)
@@ -199,8 +271,10 @@ inline std::string Describe(const Summary& summary)
   text += "; Crits " + std::to_string(summary.crits_out) + " raus / " + std::to_string(summary.crits_in) + " rein";
   text += "; Schaden raus " + Short(enemy.hull - enemy.hull_left) + " Hülle + "
           + Short(enemy.shield - enemy.shield_left) + " Schild";
-  text += "; Schaden rein " + Short(player.hull - player.hull_left) + " Hülle + "
-          + Short(player.shield - player.shield_left) + " Schild";
+  text += "; Schaden rein " + Short(summary.hull_in) + " Hülle";
+  if (const auto repaired = Repaired(summary))
+    text += " (" + Short(repaired) + " repariert)";
+  text += " + " + Short(summary.shield_in) + " Schild";
   if (player.hull > 0)
     text += "; Hülle danach " + std::to_string(player.hull_left * 100 / player.hull) + " %";
   text += "; Brücke:";
@@ -211,6 +285,10 @@ inline std::string Describe(const Summary& summary)
     text += " keine";
   for (size_t i = 0; i < summary.rewards.size(); ++i)
     text += (i ? ", " : " ") + summary.rewards[i].first + " " + summary.rewards[i].second;
+  if (!summary.buffs.empty())
+    text += "; Buffs:";
+  for (size_t i = 0; i < summary.buffs.size(); ++i)
+    text += (i ? ", " : " ") + summary.buffs[i].first + " " + summary.buffs[i].second;
   return text;
 }
 } // namespace battle_summary

@@ -744,10 +744,119 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
                "Phellun, SNW Black Ops Chapel; Beute: Riesentruhe 1",
         "the summary line");
 
+  Check(summary->hull_in == 2920326 && summary->shield_in == 13767247 && Repaired(*summary) == 0,
+        "the damage taken, hit by hit, matches what the hull and shield lost");
+
+  // Three rounds, a repairing officer below deck, numbers in exponent notation and the anomalies' buffs.
+  constexpr std::string_view kLongReport = R"csv(Spielername	Spielerlevel	Ergebnis	Schiffsname	Schiffslevel	Schiffsstärke	Schiff-EP	Offizier Eins	Offizier Zwei	Offizier Drei	Hüllen-TP	Verbleibende Hüllen-TP	Schild-TP	Verbleibende Schild-TP	Standort	Zeitstempel
+Spieler	75	SIEG	PRAEFORTIS	35	1052866904064	0	Planetfall Kirk	Planetfall Scotty	Planetfall Uhura	871670906939	857523109286	1166328469779	1165548863795	Xerionis ∃	22.11.2026 17:14:43
+Föderations-Polaron-Prototyp-∃	72	NIEDERLAGE	Föderations-Polaron-Prototyp-∃	72	2157803339776	0	Captain der Sternenflotte	--	--	3637222589290	0	1,50000000000001E+16	1,49968274105638E+16	Xerionis ∃	22.11.2026 17:14:43
+
+Belohnungsname	Anzahl
+Romulanisches Lob 7⇵	308
+Polaronionen 7⇵	154
+Riesentruhe	1
+
+[PH] Galactic Anomalies Name	[PH] Buff Value
+Verlorener Sohn	0,15
+Unendlich Weiter	0,15
+Kirks Kühnheit	10000
+Rücksichtsloses Vorgehen	0,15
+
+Flottentyp	Angreifen	Verteidigung	Gesundheit	Schiffsfähigkeit	MANÖVER DES CAPTAINS	Offizier-Eins-Fähigkeit	Offizier-Zwei-Fähigkeit	Offizier-Drei-Fähigkeit	Offiziersangriffsbonus	Schaden pro Runde	Panzerungsdurchbruch	Schilddurchbruch	Treffsicherheit	Kritische Trefferchance	Kritischer Schaden	Offiziersverteidigungsbonus	Panzerung	Schildablenkung	Ausweichen	Offiziersgesundheitsbonus	Schild-TP	Hüllen-TP	Impulsgeschwin­digkeit	Warpreichweite	Warpgeschwindigkeit	Frachtkapazität	Geschützte Fracht	Abbaubonus	Debuff angewendet	Buff angewendet
+Spielerflotte 1	163797528080	109239350400	779830034432	Durch den Schleier---Isolytischer Schild	Defensiver Fokus	Zerstörungskraft	Infusionskondensatorverstärkung	Zahlreiche Kondensatoren	56	160859121293	461170695	455286540	1307385805	0,42	6,83	56	1924118880	18167330168	1756420327	56	789637589944	770022538806	205	3803	2712,56	1668520	0	1	NEIN	NEIN
+Feindliche Flotte 1	25360216512	7777445360	2124665618432	Polaronwaffen­technologie ∃---Experimentelles Verteidigungssys.	--	--	--	--	0	21061931868	402801792	446980064	1299360640	0,1	1,5	0	173987488	1201305728	180195856	0	612108664832	3637222572032	80	2	2	0	0	1	NEIN	NEIN
+
+Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreifer - Ist Armada?	Zielname	Zielallianz	Zielschiff	Ziel - Ist Armada?	Hyperthermischer Zerfall %	Hyperthermischer Stabilisator %	Kritischer Treffer?	Hüllenschaden	Schildschaden	Abgemilderter Schaden	Abgemilderter Isolytischer Schaden	Abgemilderte Apex-Barriere	Gesamtschaden	Isolytischer Totalschaden	Abgemilderter kritischer Schaden	Polaronschaden	Gemilderter Polaronschaden	Infusionsschaden	Gemilderter Infusionsschaden	Fähigkeitstyp	Fähigkeitswert	Fähigkeitsbezeichnung	Name der Figur mit der Fähigkeit	Ziel besiegt	Ziel zerstört	Waffen laden %
+1	1	Hyperthermischer Stabilisator	--	--	VERTEIDIGUNGSPLATTFORM A	NEIN	--	--	VERTEIDIGUNGSPLATTFORM A	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--
+1	2	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	20000	Zerstörungskraft	Planetfall Kirk	--	--	--
+1	3	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	0,1	Infusionskondensatorverstärkung	Planetfall Scotty	--	--	--
+1	4	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1250	Zahlreiche Kondensatoren	Planetfall Uhura	--	--	--
+1	5	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Defensiver Fokus	Planetfall Kirk	--	--	--
+1	6	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Umgehauen	B'Elanna Torres	--	--	--
+1	7	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Leitender Moraloffizier	Neelix	--	--	--
+1	8	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	50	--	Tan Ru	--	--	--
+1	9	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	5	--	Tan Ru	--	--	--
+1	10	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	0,25	--	Quanten-Windschattenantrieb	--	--	--
+1	11	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3552677888	0	0	0	0	0	0	0	3552677888	0	0	0	--	--	--	--	--	--	--
+1	12	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	JA	5245763072	0	0	0	0	0	0	0	52457631744	0	0	0	--	--	--	--	--	--	--
+1	13	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	357120606208	309978628096	1030651117568	15188952612864	0	-3,57106811339515E+16	15498931240960	0	0	0	3,57120603607532E+16	-8544922112	--	--	--	--	--	--	--
+1	14	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	386973368320	335890644992	1116806184960	16458641833984	0	-3,86958251849047E+16	16794532478976	0	0	0	3,86973375093801E+16	8544922112	--	--	--	--	--	--	--
+1	15	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3319058688	0	0	0	0	0	0	0	3319058688	0	0	0	--	--	--	--	--	--	--
+1	16	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3315980544	0	0	0	0	0	0	0	3315980544	0	0	0	--	--	--	--	--	--	--
+1	17	Waffen laden	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	100
+1	18	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	27582484	130031704	1156442368	0	311131072	1625187628	0	0	0	0	0	0	--	--	--	--	--	--	--
+1	19	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	27237918	128407328	1141995904	0	307244384	1604885534	0	0	0	0	0	0	--	--	--	--	--	--	--
+1	20	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	27501666	129650712	1153053952	0	310219456	1620425786	0	0	0	0	0	0	--	--	--	--	--	--	--
+1	21	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	357612060672	310405201920	1032069447680	15209855975424	0	-3,57469324384666E+15	15520261177344	0	0	0	3,57612076715213E+15	37841797120	--	--	--	--	--	--	--
+1	22	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	371883245568	322792521728	1073256136704	15816832581632	0	-3,71871194174587E+16	16139625103360	0	0	0	3,71883265197343E+16	-238037106688	--	--	--	--	--	--	--
+1	23	Waffen laden	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	100
+1	24	Waffen laden	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	100
+2	26	Hyperthermischer Stabilisator	--	--	VERTEIDIGUNGSPLATTFORM A	NEIN	--	--	VERTEIDIGUNGSPLATTFORM A	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--
+2	27	battle_action_type_{0}	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	11636850000	--	--	--	--
+2	28	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Umgehauen	B'Elanna Torres	--	--	--
+2	29	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Leitender Moraloffizier	Neelix	--	--	--
+2	30	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	0,35	Leben zurückerobern	STP Hugh	--	--	--
+2	31	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	0,25	--	Quanten-Windschattenantrieb	--	--	--
+2	32	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3291800576	0	0	0	0	0	0	0	3291800576	0	0	0	--	--	--	--	--	--	--
+2	33	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3343749888	0	0	0	0	0	0	0	3343749888	0	0	0	--	--	--	--	--	--	--
+2	34	Waffen laden	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	100
+2	35	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3333193472	0	0	0	0	0	0	0	3333193472	0	0	0	--	--	--	--	--	--	--
+2	36	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3410575360	0	0	0	0	0	0	0	3410575360	0	0	0	--	--	--	--	--	--	--
+2	37	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	331161042944	287445876736	955731738624	14084847173632	0	-3,31148181689985E+16	14372293050368	0	0	0	3,31161048176394E+16	-244140624	--	--	--	--	--	--	--
+2	38	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	399646556160	346890895360	1153381040128	16997653938176	0	-3,99499177642394E+15	17344544833536	0	0	0	3,99646545831526E+15	-79345704960	--	--	--	--	--	--	--
+2	39	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	27908292	131567664	1170102528	0	314806208	1644384692	0	0	0	0	0	0	--	--	--	--	--	--	--
+2	40	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	28316942	133494160	1187235840	0	319415808	1668462750	0	0	0	0	0	0	--	--	--	--	--	--	--
+2	41	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	26823664	126454424	1124627712	0	302571584	1580477384	0	0	0	0	0	0	--	--	--	--	--	--	--
+2	42	Waffen laden	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	100
+2	43	Waffen laden	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	100
+2	44	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	359782318080	312289001472	1038332854272	15302160023552	0	-3,59642536586709E+15	15614449025024	0	0	0	3,59782323689882E+15	-244140624	--	--	--	--	--	--	--
+2	45	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	378040614912	328137048064	1091026288640	16078715486208	0	-3,77897238823322E+15	16406852534272	0	0	0	3,78040605474816E+15	-35400388608	--	--	--	--	--	--	--
+3	47	Hyperthermischer Stabilisator	--	--	VERTEIDIGUNGSPLATTFORM A	NEIN	--	--	VERTEIDIGUNGSPLATTFORM A	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--
+3	48	battle_action_type_{0}	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	10096780000	--	--	--	--
+3	49	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Umgehauen	B'Elanna Torres	--	--	--
+3	50	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	1	Leitender Moraloffizier	Neelix	--	--	--
+3	51	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	0,35	Leben zurückerobern	STP Hugh	--	--	--
+3	52	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	0,25	--	Quanten-Windschattenantrieb	--	--	--
+3	53	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3347119104	0	0	0	0	0	0	0	3347119104	0	0	0	--	--	--	--	--	--	--
+3	54	Angreifen	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	PRAEFORTIS	NEIN	--	--	NEIN	3556135936	0	0	0	0	0	0	0	3556135936	0	0	0	--	--	--	--	--	--	--
+3	55	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	323282862080	280607653888	932995268608	13749774712832	0	-322026591093497	14030382366720	0	0	0	323282859458560	-9765625	--	--	--	--	--	--	--
+3	56	Angreifen	Spieler	Allianz	PRAEFORTIS	NEIN	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	--	--	JA	389578588160	338151964672	1124324999168	16569445908480	0	-388024412119040	16907597873152	0	0	0	389578598907904	40283201536	--	--	--	--	--	--	--
+3	57	Kämpfer vernichtet	Föderations-Polaron-Prototyp-∃	--	Föderations-Polaron-Prototyp-∃	NEIN	Spieler	Allianz	Föderations-Polaron-Prototyp-∃	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	JA	--)csv";
+  const auto long_summary = Parse(kLongReport);
+  Check(long_summary && long_summary->sides.size() == 2, "both sides of the long report");
+  Check(long_summary->sides[1].shield == 15000000000000100 && long_summary->sides[1].shield_left == 14996827410563800,
+        "a shield in exponent notation");
+  Check(long_summary->rewards.size() == 3 && long_summary->rewards[2].first == "Riesentruhe"
+            && long_summary->buffs.size() == 4 && long_summary->buffs[2].first == "Kirks Kühnheit",
+        "the buffs are no loot");
+  Check(long_summary->rounds == 3 && long_summary->hits_out == 10 && long_summary->hits_in == 16
+            && long_summary->crits_out == 10 && long_summary->crits_in == 1,
+        "three rounds of hits and crits");
+  Check(long_summary->hull_in == 35881425494 && long_summary->shield_in == 779605992
+            && Repaired(*long_summary) == 21733627841,
+        "the damage taken and the hull repaired in between");
+  Check(long_summary->unread.empty(), "every section of the long report is read");
+  Check(Describe(*long_summary)
+            == "SIEG: PRAEFORTIS gegen Föderations-Polaron-Prototyp-∃ (72) in Xerionis ∃, 22.11.2026 17:14:43; "
+               "Runden 3; Treffer 10 raus / 16 rein; Crits 10 raus / 1 rein; Schaden raus 3,6 Bio Hülle + 3,2 Bio "
+               "Schild; Schaden rein 36 Mrd Hülle (22 Mrd repariert) + 780 Mio Schild; Hülle danach 98 %; Brücke: "
+               "Planetfall Kirk, Planetfall Scotty, Planetfall Uhura; Beute: Romulanisches Lob 7⇵ 308, Polaronionen "
+               "7⇵ 154, Riesentruhe 1; Buffs: Verlorener Sohn 0,15, Unendlich Weiter 0,15, Kirks Kühnheit 10000, "
+               "Rücksichtsloses Vorgehen 0,15",
+        "the long summary line");
+
   Check(!Parse("") && !Parse("kaputt\n\nnoch kaputter\n"), "anything else is no report");
   Check(Short(950) == "950" && Short(12'400) == "12 Tsd" && Short(2'920'326) == "2,9 Mio"
-            && Short(1'240'000'000) == "1,2 Mrd" && Short(97'264'487'838) == "97 Mrd",
+            && Short(1'240'000'000) == "1,2 Mrd" && Short(97'264'487'838) == "97 Mrd"
+            && Short(3'637'222'589'290) == "3,6 Bio",
         "short numbers");
+  using detail::Number;
+  Check(Number("1,49968274105638E+16") == 14996827410563800 && Number("-3,5E+3") == -3500 && Number("2,5") == 3
+            && Number("1.5e2") == 150 && Number("42") == 42,
+        "numbers in exponent notation");
+  Check(!Number("") && !Number("--") && !Number("1,5E") && !Number("E+16") && !Number("1,2,3") && !Number("9E+30"),
+        "anything else is no number");
 }
 
 void WindowPlacement()
