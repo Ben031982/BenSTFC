@@ -87,7 +87,9 @@ The log retains five previous sessions as `.log.1` through `.log.5`.
 ## Loading screens
 
 Replace the login background with the embedded artwork or a custom image.
-Adjust logo scale and show rotating mod tips.
+Adjust logo scale and show rotating mod tips. Add your own tips, or let them replace the built-in ones, and
+choose how often the game keeps its own tip. Territory defenses from `loader_defenses` appear with a countdown;
+the next one replaces the welcome line on the first loading screen.
 Transitions can reuse the artwork or use a black background with logos.
 
 ## Data sync

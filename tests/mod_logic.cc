@@ -1,6 +1,7 @@
 // Settings parsing and shortcut matching, run against production code with Unity input replaced by a fake.
 #include "config.h"
 #include "features/chat_startup.h"
+#include "features/loading_tips.h"
 #include "features/mouse_navigation.h"
 #include "features/notification_audio.h"
 #include "features/ship_shortcut_hint.h"
@@ -360,6 +361,85 @@ void DailyFactionSettings()
   Check(config->ui.auto_confirm_alliance_contribution, "alliance contribution setting survives parsing");
 }
 
+void LoadingTips()
+{
+  using namespace loading_tips;
+  LoaderDefense parsed;
+  Check(ParseDefenseTime("27.11. 13:00", parsed) && parsed.year == 0 && parsed.month == 11 && parsed.day == 27
+            && parsed.hour == 13 && parsed.minute == 0,
+        "a defense time without a year");
+  Check(ParseDefenseTime(" 1.2.2027  9:05 ", parsed) && parsed.year == 2027 && parsed.month == 2 && parsed.day == 1
+            && parsed.hour == 9 && parsed.minute == 5,
+        "single digits, a year and extra spaces");
+  Check(ParseDefenseTime("2026-11-28 14:00", parsed) && parsed.year == 2026 && parsed.month == 11 && parsed.day == 28,
+        "an ISO defense date");
+  for (const auto* bad : {"", "27.11.", "Fr 13:00", "27.11. 24:00", "32.11. 13:00", "27.13. 13:00", "27.11. 13",
+                          "27.11. 13:00x", "-1.11. 13:00", "27.11.26 13:00"}) {
+    LoaderDefense untouched;
+    Check(!ParseDefenseTime(bad, untouched) && untouched.month == 0, "a malformed defense time is rejected");
+  }
+
+  Check(Countdown(30) == "in 1 Min", "a countdown never shows less than a minute");
+  Check(Countdown(20 * 60) == "in 20 Min", "minutes");
+  Check(Countdown(2 * 3600 + 20 * 60) == "in 2 Std 20 Min", "hours and minutes");
+  Check(Countdown(26 * 3600) == "in 1 T 2 Std", "days and hours");
+
+  const auto at = [](const char* text) {
+    LoaderDefense defense;
+    ParseDefenseTime(text, defense);
+    return DefenseStart(defense, 0);
+  };
+  std::vector<LoaderDefense> defenses(3);
+  ParseDefenseTime("27.11.2026 18:00", defenses[0]);
+  ParseDefenseTime("27.11.2026 13:00", defenses[1]);
+  ParseDefenseTime("20.11.2026 13:00", defenses[2]);
+  defenses[0].system = "Tazolka";
+  defenses[0].level  = 1;
+  defenses[1].system = "Aylus";
+  defenses[1].level  = 1;
+  defenses[2].system = "Vorbei";
+  Check(DefenseTip(defenses, at("27.11.2026 10:40"))
+            == "Gebietsverteidigung: Aylus (Stufe 1) am Fr 27.11. um 13:00 Uhr, in 2 Std 20 Min. Danach: Tazolka "
+               "(Stufe 1) am Fr 27.11. um 18:00 Uhr.",
+        "the next defense with its countdown, then the one after it");
+  Check(DefenseTip(defenses, at("27.11.2026 13:30"))
+            == "Gebietsverteidigung: Aylus (Stufe 1) läuft gerade (seit 13:00 Uhr). Danach: Tazolka (Stufe 1) am Fr "
+               "27.11. um 18:00 Uhr.",
+        "a running defense");
+  Check(DefenseTip(defenses, at("27.11.2026 18:30"))
+            == "Gebietsverteidigung: Tazolka (Stufe 1) läuft gerade (seit 18:00 Uhr).",
+        "the last running defense");
+  Check(!DefenseTip(defenses, at("27.11.2026 19:00")), "no tip once every defense has ended");
+  defenses[1].level = 0;
+  Check(DefenseTip(defenses, at("27.11.2026 13:30"))->starts_with("Gebietsverteidigung: Aylus läuft gerade"),
+        "a defense without a level");
+
+  LoaderDefense new_year;
+  ParseDefenseTime("02.01. 13:00", new_year);
+  Check(DefenseStart(new_year, at("31.12.2026 20:00")) == at("02.01.2027 13:00"),
+        "a date without a year is the one closest to now");
+
+  toml::table effective;
+  const auto  config = Config::Parse(toml::parse(R"([graphics]
+loader_tips = ["Erste Regel", "   ", 7, "Zweite Regel"]
+loader_tips_game_share = 1.5
+loader_defenses = [
+  { system = "Aylus", level = 1, time = "27.11. 13:00" },
+  { system = "Ohne Stufe", time = "2026-11-28 14:00" },
+  { system = "Kaputt", level = 1, time = "Fr 13:00" },
+  { level = 2, time = "27.11. 13:00" },
+])"),
+                                    effective, false);
+  Check(config->graphics.loader_tips == std::vector<std::string>{"Erste Regel", "Zweite Regel"},
+        "blank and non-string tips are skipped");
+  Check(config->graphics.loader_tips_game_share == 0.5f, "a game share outside 0 to 1 keeps the default");
+  Check(config->graphics.loader_defenses.size() == 2 && config->graphics.loader_defenses[0].system == "Aylus"
+            && config->graphics.loader_defenses[1].level == 0,
+        "valid defenses are kept and the level is optional");
+  const auto* recorded = effective["graphics"]["loader_defenses"].as_array();
+  Check(recorded && recorded->size() == 2, "the vars file lists the defenses used");
+}
+
 void UpstreamSettings()
 {
   toml::table effective;
@@ -584,6 +664,7 @@ int main()
   ExampleSettings();
   NotificationAudio();
   DailyFactionSettings();
+  LoadingTips();
   UpstreamSettings();
   RenamedSettings();
   ParseDoesNotActivateSettings();

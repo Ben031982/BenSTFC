@@ -211,6 +211,25 @@ loader_logo_scale = 1.0
 # Show the custom tip on the loading screen
 loader_tip_enabled = true
 
+# Your own loading tips, one string each. They join the mod's built-in tips.
+# loader_tips = ["Armada every evening at 20:00.", "Read the mining rules in the alliance chat."]
+loader_tips = []
+
+# Show only your own tips and defenses, never the mod's built-in tips
+loader_tips_replace = false
+
+# Share of loading screens that keep the game's own tip, from 0.0 (never) to 1.0 (always)
+loader_tips_game_share = 0.5
+
+# Territory defenses, in your computer's local time. The next one replaces the welcome line on the first loading
+# screen and appears among the tips with a countdown; each disappears an hour after it starts.
+# time is "DD.MM. HH:MM", "DD.MM.YYYY HH:MM" or "YYYY-MM-DD HH:MM"; level is optional. The tip text is German.
+# loader_defenses = [
+#   { system = "Aylus", level = 1, time = "27.11. 13:00" },
+#   { system = "Tazolka", level = 1, time = "27.11. 18:00" },
+# ]
+loader_defenses = []
+
 # Set to true to use the loader image for the transition screen
 loader_transition = true
 

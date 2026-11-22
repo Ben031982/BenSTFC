@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "features/features.h"
+#include "features/loading_tips.h"
 #include "file.h"
 #include "version.h"
 
@@ -15,10 +16,13 @@
 #include <unity/ui.h>
 
 #include <algorithm>
-#include <array>
+#include <cstdint>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <random>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -206,19 +210,15 @@ void LoginSequence_Awake_Hook(auto original, LoginSequence* _this)
 
 struct LoadingTip {
   const char* text;
-  int         weight;
+  int32_t     weight;
 };
 
+// Borderless fullscreen and its F11 toggle are not applied yet, so no tip mentions them.
 constexpr LoadingTip kTipTexts[] = {
     {"Did you know? You can customize zoom presets, hotkeys, and UI scale in the community mod settings file to suit "
      "your playstyle.",
      15},
-    {"The community mod supports custom loading screens, transition backgrounds, and borderless fullscreen mode for a "
-     "better experience.",
-     10},
-    {"Press F11 at any time to toggle between borderless fullscreen and windowed mode without restarting the game or "
-     "losing your session.",
-     15},
+    {"The community mod supports custom loading screens and transition backgrounds for a better experience.", 10},
     {"Visit https://stfc.pro to track player rankings and stats across over 236,000 players and 114 servers in Star "
      "Trek Fleet Command.",
      50},
@@ -227,32 +227,60 @@ constexpr LoadingTip kTipTexts[] = {
      10},
 };
 
-// The first loading screen of a session gets the welcome line. After that, half the transition screens keep the
-// game's own tip and the rest get one of ours by weight, never the same one twice in a row.
+// Each of [graphics] loader_tips, and the defense tip, weighed against the built-in tips above.
+constexpr int32_t kOwnTipWeight     = 10;
+constexpr int32_t kDefenseTipWeight = 30;
+
+constexpr std::string_view kWelcomeTip =
+    "Welcome to Star Trek Fleet Command, Supported by the Community Mod "
+    "v" VER_FILE_VERSION_STR VERSION_PATCH_STR "! Please check our discord for the latest information!";
+
+// The first loading screen of a session gets the next territory defense from [graphics] loader_defenses, or the
+// welcome line when none is coming. After that, loader_tips_game_share of the screens keep the game's own tip and
+// the rest get one of ours by weight, never the same one twice in a row unless it is the only one.
 struct TipPicker {
+  struct Candidate {
+    std::string key;
+    std::string text;
+    int32_t     weight;
+  };
+
   bool         first_screen = true;
-  size_t       last         = std::size(kTipTexts);
+  std::string  last;
   std::mt19937 random{std::random_device{}()};
 
-  const char* Next()
+  std::optional<std::string> Next()
   {
+    const auto& graphics = Config::Get().graphics;
+    auto        defense  = loading_tips::DefenseTip(graphics.loader_defenses, std::time(nullptr));
     if (std::exchange(first_screen, false))
-      return "Welcome to Star Trek Fleet Command, Supported by the Community Mod "
-             "v" VER_FILE_VERSION_STR VERSION_PATCH_STR "! Please check our discord for the latest information!";
-    if (std::bernoulli_distribution(0.5)(random))
-      return nullptr;
+      return defense ? std::move(*defense) : std::string(kWelcomeTip);
+    if (std::bernoulli_distribution(graphics.loader_tips_game_share)(random))
+      return std::nullopt;
 
-    std::array<int, std::size(kTipTexts)> weights{};
-    for (size_t i = 0; i < weights.size(); ++i)
-      weights[i] = i == last ? 0 : kTipTexts[i].weight;
-    last = std::discrete_distribution<size_t>(weights.begin(), weights.end())(random);
-    return kTipTexts[last].text;
+    std::vector<Candidate> candidates;
+    if (!graphics.loader_tips_replace)
+      for (size_t i = 0; i < std::size(kTipTexts); ++i)
+        candidates.push_back({"mod" + std::to_string(i), kTipTexts[i].text, kTipTexts[i].weight});
+    for (size_t i = 0; i < graphics.loader_tips.size(); ++i)
+      candidates.push_back({"own" + std::to_string(i), graphics.loader_tips[i], kOwnTipWeight});
+    if (defense)
+      candidates.push_back({"defense", std::move(*defense), kDefenseTipWeight});
+    if (candidates.empty())
+      return std::nullopt;
+
+    std::vector<int32_t> weights;
+    for (const auto& candidate : candidates)
+      weights.push_back(candidate.key == last && candidates.size() > 1 ? 0 : candidate.weight);
+    auto& picked = candidates[std::discrete_distribution<size_t>(weights.begin(), weights.end())(random)];
+    last         = picked.key;
+    return std::move(picked.text);
   }
 
   void Reset()
   {
     first_screen = true;
-    last         = std::size(kTipTexts);
+    last.clear();
   }
 } tip_picker;
 
@@ -262,8 +290,8 @@ void LoadingTipViewController_SetRandomTipLocalisedText_Hook(auto original, Load
   if (!Config::Get().graphics.loader_tip_enabled)
     return;
   auto* label = _this->textMeshPro();
-  if (const char* tip = tip_picker.Next(); tip && label)
-    label->SetText(tip);
+  if (auto tip = tip_picker.Next(); tip && label)
+    label->SetText(*tip);
 }
 
 // --- Transition screen ---

@@ -3,6 +3,7 @@
 
 #include "config.h"
 
+#include "features/loading_tips.h"
 #include "file.h"
 #include "shortcuts.h"
 #include "text.h"
@@ -256,6 +257,72 @@ ShipFilter ReadShipFilter(Reader& reader, std::string_view key)
     if (auto words = ShipNameWords(token); !words.empty())
       filter.names.push_back(std::move(words));
   return filter;
+}
+
+// [graphics] loader_tips: an array of strings. Blank entries are skipped; anything else that is not a string is
+// skipped with a warning.
+std::vector<std::string> ReadLoaderTips(Reader& reader)
+{
+  std::vector<std::string> tips;
+  toml::array              recorded;
+  const auto               node = reader.Node("graphics", "loader_tips");
+  if (node && !node.is_array())
+    spdlog::warn("invalid config value graphics.loader_tips: expected an array of strings; ignoring it");
+  if (const auto* array = node.as_array()) {
+    int32_t entry = 0;
+    for (const auto& item : *array) {
+      ++entry;
+      const auto text = item.value<std::string>();
+      if (!text) {
+        spdlog::warn("invalid config value graphics.loader_tips entry {}: expected a string; ignoring it", entry);
+        continue;
+      }
+      if (StripAsciiWhitespace(*text).empty())
+        continue;
+      tips.push_back(*text);
+      recorded.push_back(*text);
+    }
+  }
+  reader.EffectiveSection("graphics").insert_or_assign("loader_tips", std::move(recorded));
+  return tips;
+}
+
+// [graphics] loader_defenses: an array of { system = "Name", level = 1, time = "27.11. 13:00" }. level is
+// optional. An entry without a system name or with a time ParseDefenseTime rejects is skipped with a warning.
+std::vector<LoaderDefense> ReadLoaderDefenses(Reader& reader)
+{
+  std::vector<LoaderDefense> defenses;
+  toml::array                recorded;
+  const auto                 node = reader.Node("graphics", "loader_defenses");
+  if (node && !node.is_array())
+    spdlog::warn("invalid config value graphics.loader_defenses: expected an array of tables; ignoring it");
+  if (const auto* array = node.as_array()) {
+    int32_t entry = 0;
+    for (const auto& item : *array) {
+      ++entry;
+      const auto*   table    = item.as_table();
+      LoaderDefense defense;
+      const auto    name     = table ? (*table)["system"].value<std::string>() : std::nullopt;
+      const auto    when     = table ? (*table)["time"].value<std::string>() : std::nullopt;
+      const auto    level    = table ? (*table)["level"].value<int64_t>() : std::nullopt;
+      const bool    level_ok = !table || !table->contains("level") || (level && *level >= 0 && *level <= 99);
+      if (!name || StripAsciiWhitespace(*name).empty() || !when || !loading_tips::ParseDefenseTime(*when, defense)
+          || !level_ok) {
+        spdlog::warn("invalid config value graphics.loader_defenses entry {}: expected {{ system = \"Name\", "
+                     "level = 1, time = \"27.11. 13:00\" }}; ignoring it",
+                     entry);
+        continue;
+      }
+      defense.system = std::string(StripAsciiWhitespace(*name));
+      defense.level  = static_cast<int32_t>(level.value_or(0));
+      recorded.push_back(toml::table{{"system", defense.system},
+                                     {"level", static_cast<int64_t>(defense.level)},
+                                     {"time", std::string(StripAsciiWhitespace(*when))}});
+      defenses.push_back(std::move(defense));
+    }
+  }
+  reader.EffectiveSection("graphics").insert_or_assign("loader_defenses", std::move(recorded));
+  return defenses;
 }
 
 // A comma list of kKnownFactions, or "none", which wins over the others. Blank means all of them.
@@ -641,6 +708,11 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Read("graphics", "loader_image", g.loader_image);
   r.Read("graphics", "loader_logo_scale", g.loader_logo_scale);
   r.Read("graphics", "loader_tip_enabled", g.loader_tip_enabled);
+  g.loader_tips = ReadLoaderTips(r);
+  r.Read("graphics", "loader_tips_replace", g.loader_tips_replace);
+  r.ReadValid("graphics", "loader_tips_game_share", g.loader_tips_game_share,
+              [](float v) { return std::isfinite(v) && v >= 0.0f && v <= 1.0f; });
+  g.loader_defenses = ReadLoaderDefenses(r);
   r.Read("graphics", "galactic_anomaly_timer", g.galactic_anomaly_timer);
   r.Read("graphics", "mirror_space_timer", g.mirror_space_timer);
 

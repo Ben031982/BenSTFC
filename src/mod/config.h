@@ -120,6 +120,18 @@ struct FleetLabelProfile {
   float            zoom_threshold = 0.5f;
 };
 
+// A territory defense from [graphics] loader_defenses, in the computer's local time. Year 0 means the year that
+// puts it closest to now.
+struct LoaderDefense {
+  std::string system;
+  int32_t     level  = 0;
+  int32_t     year   = 0;
+  int32_t     month  = 0;
+  int32_t     day    = 0;
+  int32_t     hour   = 0;
+  int32_t     minute = 0;
+};
+
 // Ship names from a comma list, each split by ShipNameWords, or every ship for "*".
 struct ShipFilter {
   std::vector<std::vector<std::string>> names;
@@ -242,6 +254,12 @@ public:
     std::string loader_image;
     float       loader_logo_scale      = 1.0f;
     bool        loader_tip_enabled     = true;
+    // The player's own tips, joining the mod's built-in ones or, with loader_tips_replace, taking their place.
+    std::vector<std::string> loader_tips;
+    bool                     loader_tips_replace = false;
+    // The share of loading screens, 0 to 1, that keep the game's own tip.
+    float                      loader_tips_game_share = 0.5f;
+    std::vector<LoaderDefense> loader_defenses;
     bool        galactic_anomaly_timer = false;
     bool        mirror_space_timer     = false;
   } graphics;
