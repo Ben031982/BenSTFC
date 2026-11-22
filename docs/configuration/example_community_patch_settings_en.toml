@@ -258,6 +258,10 @@ galactic_anomaly_timer = false
 # Both HUD timers use [patches] galacticanomalytimerhooks.
 mirror_space_timer = false
 
+# Show the next of loader_defenses with its countdown in a HUD panel below the timers above.
+# It also uses [patches] galacticanomalytimerhooks. The panel text is German.
+defense_timer = true
+
 # After using a zoom preset it will be set as default zoom
 use_presets_as_default = true
 
@@ -805,6 +809,10 @@ disabled_banner_types = ""
 
 # Specifies banner types that should trigger notifications (comma separated)
 notify_banner_types = ""
+
+# Minutes before each of [graphics] loader_defenses to send a Windows notification (comma separated, e.g. "30, 10").
+# Only the closest reminder is sent when the game starts late. Windows only; the text is German.
+defense_reminders = ""
 
 # Subgroup: Chat
 # --------------

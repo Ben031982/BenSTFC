@@ -3,7 +3,7 @@
 
 #include "config.h"
 #include "features/features.h"
-#include "features/loading_tips.h"
+#include "features/defense_schedule.h"
 #include "file.h"
 #include "version.h"
 
@@ -252,7 +252,7 @@ struct TipPicker {
   std::optional<std::string> Next()
   {
     const auto& graphics = Config::Get().graphics;
-    auto        defense  = loading_tips::DefenseTip(graphics.loader_defenses, std::time(nullptr));
+    auto        defense  = defense_schedule::DefenseTip(graphics.loader_defenses, std::time(nullptr));
     if (std::exchange(first_screen, false))
       return defense ? std::move(*defense) : std::string(kWelcomeTip);
     if (std::bernoulli_distribution(graphics.loader_tips_game_share)(random))

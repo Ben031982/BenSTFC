@@ -385,4 +385,9 @@ bool InstallToasts()
 }
 } // namespace
 
+#if _WIN32
+void ShowDesktopNotification(const char* title, const std::string& body)
+{ ShowWindowsNotification(title, body); }
+#endif
+
 const Feature kToasts{"Toasts", &Config::Patches::toastbannerhooks, InstallToasts};

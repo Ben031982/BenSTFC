@@ -3,7 +3,7 @@
 
 #include "config.h"
 
-#include "features/loading_tips.h"
+#include "features/defense_schedule.h"
 #include "file.h"
 #include "shortcuts.h"
 #include "text.h"
@@ -15,11 +15,13 @@
 
 #include <algorithm>
 #include <atomic>
+#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <optional>
 #include <ranges>
 #include <sstream>
@@ -306,8 +308,8 @@ std::vector<LoaderDefense> ReadLoaderDefenses(Reader& reader)
       const auto    when     = table ? (*table)["time"].value<std::string>() : std::nullopt;
       const auto    level    = table ? (*table)["level"].value<int64_t>() : std::nullopt;
       const bool    level_ok = !table || !table->contains("level") || (level && *level >= 0 && *level <= 99);
-      if (!name || StripAsciiWhitespace(*name).empty() || !when || !loading_tips::ParseDefenseTime(*when, defense)
-          || !level_ok) {
+      if (!name || StripAsciiWhitespace(*name).empty() || !when
+          || !defense_schedule::ParseDefenseTime(*when, defense) || !level_ok) {
         spdlog::warn("invalid config value graphics.loader_defenses entry {}: expected {{ system = \"Name\", "
                      "level = 1, time = \"27.11. 13:00\" }}; ignoring it",
                      entry);
@@ -323,6 +325,32 @@ std::vector<LoaderDefense> ReadLoaderDefenses(Reader& reader)
   }
   reader.EffectiveSection("graphics").insert_or_assign("loader_defenses", std::move(recorded));
   return defenses;
+}
+
+// [ui] defense_reminders: a comma list of minutes from 1 to a day, largest first in the vars file. Blank means none.
+std::vector<int32_t> ReadDefenseReminders(Reader& reader)
+{
+  std::vector<int32_t> minutes;
+  for (const auto& token : StrSplit(reader.Get<std::string>("ui", "defense_reminders", ""), ',')) {
+    const auto text = StripAsciiWhitespace(token);
+    if (text.empty())
+      continue;
+    int32_t    value        = 0;
+    const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (error != std::errc{} || end != text.data() + text.size() || value < 1 || value > 24 * 60) {
+      spdlog::warn("invalid config value ui.defense_reminders: '{}'; ignoring it (expected minutes from 1 to 1440)",
+                   text);
+      continue;
+    }
+    if (!std::ranges::contains(minutes, value))
+      minutes.push_back(value);
+  }
+  std::ranges::sort(minutes, std::greater{});
+  std::string recorded;
+  for (const auto value : minutes)
+    recorded += (recorded.empty() ? "" : ", ") + std::to_string(value);
+  reader.Record("ui", "defense_reminders", recorded);
+  return minutes;
 }
 
 // A comma list of kKnownFactions, or "none", which wins over the others. Blank means all of them.
@@ -715,6 +743,7 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   g.loader_defenses = ReadLoaderDefenses(r);
   r.Read("graphics", "galactic_anomaly_timer", g.galactic_anomaly_timer);
   r.Read("graphics", "mirror_space_timer", g.mirror_space_timer);
+  r.Read("graphics", "defense_timer", g.defense_timer);
 
   // [buffs]
   r.Read("buffs", "use_out_of_dock_power", buffs.use_out_of_dock_power);
@@ -795,6 +824,7 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Choose("ui", "hud_missions", u.hud_missions, kHudVisibility);
   u.disabled_banner_types = ReadBannerTypes(r, "disabled_banner_types");
   u.notify_banner_types   = ReadBannerTypes(r, "notify_banner_types");
+  u.defense_reminders     = ReadDefenseReminders(r);
 
   // [sync]
   auto sync = std::make_shared<Sync>();

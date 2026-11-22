@@ -1,7 +1,7 @@
 // Settings parsing and shortcut matching, run against production code with Unity input replaced by a fake.
 #include "config.h"
 #include "features/chat_startup.h"
-#include "features/loading_tips.h"
+#include "features/defense_schedule.h"
 #include "features/mouse_navigation.h"
 #include "features/notification_audio.h"
 #include "features/ship_shortcut_hint.h"
@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <set>
 #include <source_location>
 #include <utility>
@@ -361,9 +362,9 @@ void DailyFactionSettings()
   Check(config->ui.auto_confirm_alliance_contribution, "alliance contribution setting survives parsing");
 }
 
-void LoadingTips()
+void DefenseSchedule()
 {
-  using namespace loading_tips;
+  using namespace defense_schedule;
   LoaderDefense parsed;
   Check(ParseDefenseTime("27.11. 13:00", parsed) && parsed.year == 0 && parsed.month == 11 && parsed.day == 27
             && parsed.hour == 13 && parsed.minute == 0,
@@ -438,6 +439,32 @@ loader_defenses = [
         "valid defenses are kept and the level is optional");
   const auto* recorded = effective["graphics"]["loader_defenses"].as_array();
   Check(recorded && recorded->size() == 2, "the vars file lists the defenses used");
+  Check(config->graphics.defense_timer, "the defense panel is on by default");
+
+  defenses[1].level = 1;
+  Check(DefensePanelText(defenses, at("27.11.2026 10:40"))
+            == "Verteidigung: Aylus (Stufe 1)\nFr 13:00 Uhr, in 2 Std 20 Min",
+        "the panel shows the next defense and its countdown");
+  Check(DefensePanelText(defenses, at("27.11.2026 13:05")) == "Verteidigung: Aylus (Stufe 1)\nläuft gerade",
+        "the panel shows a running defense");
+  Check(!DefensePanelText(defenses, at("27.11.2026 19:00")), "no panel once every defense has ended");
+
+  const std::vector<int32_t> leads{30, 10};
+  int32_t                    sent = std::numeric_limits<int32_t>::max();
+  Check(!DueReminder(31 * 60, leads, sent), "no reminder before the first lead");
+  Check(DueReminder(30 * 60, leads, sent) == 30, "the first lead is sent");
+  Check(!DueReminder(25 * 60, leads, sent), "a lead is sent once");
+  Check(DueReminder(9 * 60, leads, sent) == 10, "the next lead follows");
+  Check(!DueReminder(60, leads, sent) && !DueReminder(0, leads, sent), "nothing after the last lead or the start");
+  sent = std::numeric_limits<int32_t>::max();
+  Check(DueReminder(5 * 60, leads, sent) == 10 && !DueReminder(4 * 60, leads, sent),
+        "a late start sends only the closest lead");
+
+  const auto reminders = Config::Parse(toml::parse("[ui]\ndefense_reminders = \"10, 30, x, 0, 30, 2000\""),
+                                       effective, false);
+  Check(reminders->ui.defense_reminders == std::vector<int32_t>{30, 10}, "reminder minutes are sorted and checked");
+  Check(effective["ui"]["defense_reminders"].value<std::string>() == "30, 10", "the vars file lists the reminders");
+  Check(Config::Parse(toml::table{}, effective, false)->ui.defense_reminders.empty(), "reminders are off by default");
 }
 
 void UpstreamSettings()
@@ -664,7 +691,7 @@ int main()
   ExampleSettings();
   NotificationAudio();
   DailyFactionSettings();
-  LoadingTips();
+  DefenseSchedule();
   UpstreamSettings();
   RenamedSettings();
   ParseDoesNotActivateSettings();

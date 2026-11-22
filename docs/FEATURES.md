@@ -24,6 +24,7 @@ Features depend on the game client. A client update can break a hook until the m
 | Window and cursor | Resize the game window freely on Windows and control whether the game replaces the system cursor. |
 | Mirror space timer | Show the earliest remaining ship countdown in the viewed Mirror system, below Help All, Engage and Claim. Enable `mirror_space_timer` in `[graphics]`. Disabled by default. |
 | Anomaly timer | Show the remaining time in a Galactic Anomaly system. Disabled by default. |
+| Defense timer | Show the next territory defense from `loader_defenses` with its countdown, below the HUD timers. `defense_timer` in `[graphics]`; on by default, empty until defenses are set. German text. |
 
 `fr_scale` scales system-view backdrop renderables.
 The code reads `transition_time`, `system_pan_momentum`, and `borderless_fullscreen`, but does not currently apply them.
@@ -77,6 +78,7 @@ Other options show the newest Haven help-history entries first, limit ads to the
 
 - Hide selected banner types or use the experimental global banner switch.
 - Send desktop notifications for selected banners on Windows.
+- Send Windows reminders before territory defenses, at the minutes listed in `[ui] defense_reminders`.
 - Play optional victory, defeat, and Armada sounds on Windows and macOS.
 - Suppress named audio events, or use `All` to block named events that start or resume audio.
 - Log audio event names to help build a suppression list.

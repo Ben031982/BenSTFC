@@ -262,6 +262,8 @@ public:
     std::vector<LoaderDefense> loader_defenses;
     bool        galactic_anomaly_timer = false;
     bool        mirror_space_timer     = false;
+    // A HUD panel with the next of loader_defenses and its countdown.
+    bool defense_timer = true;
   } graphics;
 
   struct Buffs {
@@ -346,6 +348,8 @@ public:
     // ToastState values.
     std::vector<int> disabled_banner_types;
     std::vector<int> notify_banner_types;
+    // Minutes before each of [graphics] loader_defenses to send a Windows notification.
+    std::vector<int32_t> defense_reminders;
   } ui;
 
   struct Sync {

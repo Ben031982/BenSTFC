@@ -1,7 +1,8 @@
 #pragma once
 
-// Loading tip text that does not touch the game, kept apart so it can be tested: the times of [graphics]
-// loader_defenses and the defense tip with its countdown. The tip is German, for the NGO build.
+// Territory defenses from [graphics] loader_defenses, without touching the game so they can be tested: parsing their
+// times, the loading tip, the HUD panel text and when a [ui] defense_reminders notification is due. All text is
+// German, for the NGO build.
 
 #include "config.h"
 #include "text.h"
@@ -12,13 +13,14 @@
 #include <cstdlib>
 #include <ctime>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace loading_tips
+namespace defense_schedule
 {
-// A defense stays in the tip, as running, for this long after it starts.
+// A defense counts as running, and stays listed, for this long after it starts.
 constexpr int64_t kDefenseRunningSeconds = 60 * 60;
 
 namespace detail
@@ -70,12 +72,6 @@ inline std::time_t LocalTime(int32_t year, const LoaderDefense& defense)
 
 inline std::string TwoDigits(int32_t value)
 { return value < 10 ? "0" + std::to_string(value) : std::to_string(value); }
-
-inline std::string Name(const LoaderDefense& defense)
-{ return defense.level > 0 ? defense.system + " (Stufe " + std::to_string(defense.level) + ")" : defense.system; }
-
-inline std::string Clock(const std::tm& local)
-{ return TwoDigits(local.tm_hour) + ":" + TwoDigits(local.tm_min) + " Uhr"; }
 
 inline std::string Day(const std::tm& local)
 {
@@ -159,34 +155,88 @@ inline std::string Countdown(int64_t seconds)
   return "in " + std::to_string(minutes) + " Min";
 }
 
-// The tip for the next defense that has not ended, and the one after it, or nothing when none is left.
-inline std::optional<std::string> DefenseTip(const std::vector<LoaderDefense>& defenses, std::time_t now)
+// "Aylus (Stufe 1)", or the name alone without a level.
+inline std::string DefenseName(const LoaderDefense& defense)
+{ return defense.level > 0 ? defense.system + " (Stufe " + std::to_string(defense.level) + ")" : defense.system; }
+
+// "13:00 Uhr" in local time.
+inline std::string Clock(std::time_t time)
 {
-  struct Upcoming {
-    std::time_t          start;
-    const LoaderDefense* defense;
-  };
-  std::vector<Upcoming> upcoming;
+  const auto local = detail::LocalTm(time);
+  return detail::TwoDigits(local.tm_hour) + ":" + detail::TwoDigits(local.tm_min) + " Uhr";
+}
+
+// "Fr 27.11." in local time.
+inline std::string Day(std::time_t time)
+{ return detail::Day(detail::LocalTm(time)); }
+
+struct Scheduled {
+  std::time_t          start;
+  const LoaderDefense* defense;
+};
+
+// The defenses that have not ended by `now`, soonest first. They point into `defenses`.
+inline std::vector<Scheduled> Upcoming(const std::vector<LoaderDefense>& defenses, std::time_t now)
+{
+  std::vector<Scheduled> upcoming;
   for (const auto& defense : defenses)
     if (const auto start = DefenseStart(defense, now); start + kDefenseRunningSeconds > now)
       upcoming.push_back({start, &defense});
+  std::ranges::stable_sort(upcoming, {}, &Scheduled::start);
+  return upcoming;
+}
+
+// The loading tip for the next defense that has not ended, and the one after it, or nothing when none is left.
+inline std::optional<std::string> DefenseTip(const std::vector<LoaderDefense>& defenses, std::time_t now)
+{
+  const auto upcoming = Upcoming(defenses, now);
   if (upcoming.empty())
     return std::nullopt;
-  std::ranges::stable_sort(upcoming, {}, &Upcoming::start);
-
-  const auto& next  = upcoming.front();
-  const auto  local = detail::LocalTm(next.start);
-  std::string tip   = "Gebietsverteidigung: " + detail::Name(*next.defense);
+  const auto& next = upcoming.front();
+  std::string tip  = "Gebietsverteidigung: " + DefenseName(*next.defense);
   if (next.start <= now)
-    tip += " läuft gerade (seit " + detail::Clock(local) + ").";
+    tip += " läuft gerade (seit " + Clock(next.start) + ").";
   else
-    tip += " am " + detail::Day(local) + " um " + detail::Clock(local) + ", "
+    tip += " am " + Day(next.start) + " um " + Clock(next.start) + ", "
            + Countdown(static_cast<int64_t>(next.start - now)) + ".";
   if (upcoming.size() > 1) {
     const auto& after = upcoming[1];
-    const auto  then  = detail::LocalTm(after.start);
-    tip += " Danach: " + detail::Name(*after.defense) + " am " + detail::Day(then) + " um " + detail::Clock(then) + ".";
+    tip += " Danach: " + DefenseName(*after.defense) + " am " + Day(after.start) + " um " + Clock(after.start) + ".";
   }
   return tip;
 }
-} // namespace loading_tips
+
+// The two lines of the HUD panel for the next defense, or nothing when none is left.
+inline std::optional<std::string> DefensePanelText(const std::vector<LoaderDefense>& defenses, std::time_t now)
+{
+  const auto upcoming = Upcoming(defenses, now);
+  if (upcoming.empty())
+    return std::nullopt;
+  const auto& next = upcoming.front();
+  std::string text = "Verteidigung: " + DefenseName(*next.defense) + "\n";
+  if (next.start <= now)
+    text += "läuft gerade";
+  else
+    text += Day(next.start).substr(0, 2) + " " + Clock(next.start) + ", "
+            + Countdown(static_cast<int64_t>(next.start - now));
+  return text;
+}
+
+// Whether a reminder is due `remaining_seconds` before a defense, given the lead times in minutes and the smallest
+// lead already sent for it in `sent` (INT32_MAX before the first). Only the closest lead that has been reached is
+// sent, so a game started five minutes before a defense reminds once, not for every lead at once. Returns the lead
+// it sends and records it in `sent`.
+inline std::optional<int32_t> DueReminder(int64_t remaining_seconds, std::span<const int32_t> leads, int32_t& sent)
+{
+  if (remaining_seconds <= 0)
+    return std::nullopt;
+  std::optional<int32_t> due;
+  for (const int32_t lead : leads)
+    if (remaining_seconds <= int64_t{lead} * 60 && (!due || lead < *due))
+      due = lead;
+  if (!due || *due >= sent)
+    return std::nullopt;
+  sent = *due;
+  return due;
+}
+} // namespace defense_schedule

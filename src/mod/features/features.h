@@ -180,6 +180,10 @@ extern const Feature kArtifactExchange;
 
 // toasts.cc
 extern const Feature kToasts;
+#if _WIN32
+// A Windows notification from the game thread, sent the way notify_banner_types sends banners.
+void ShowDesktopNotification(const char* title, const std::string& body);
+#endif
 
 // tracked_objects.cc
 extern const Feature kObjectTracker;
