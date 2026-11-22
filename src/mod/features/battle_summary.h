@@ -28,6 +28,20 @@ struct Side {
   int64_t                  shield_left = 0;
 };
 
+// The hits' damage by type, summed over the battle as the game's detailed log shows it. Left out: the game's
+// "standard damage" total, which can be negative, and infusion, whose figures are the hull damage's digits times
+// 1 000 to 100 000, with prevented infusion flipping sign.
+struct DamageTypes {
+  int64_t isolytic         = 0;
+  int64_t polaron          = 0;
+  // What the target's defenses took off: mitigated standard damage, blocked isolytic damage, the Apex Barrier,
+  // and the crit damage mitigation.
+  int64_t mitigated        = 0;
+  int64_t isolytic_blocked = 0;
+  int64_t apex             = 0;
+  int64_t crit_blocked     = 0;
+};
+
 struct Summary {
   // The report's first rows: the player's side first.
   std::vector<Side>                                sides;
@@ -44,6 +58,9 @@ struct Summary {
   // The damage the player took, hit by hit; more than the hull lost when it was repaired during the battle.
   int64_t hull_in   = 0;
   int64_t shield_in = 0;
+  // By type: the player's hits, and the hits the player took.
+  DamageTypes dealt;
+  DamageTypes taken;
   // The header rows of sections this does not read yet, for the log.
   std::vector<std::string> unread;
 };
@@ -205,6 +222,16 @@ inline std::optional<Summary> Parse(std::string_view csv)
           summary.hull_in += Number(cells[14]).value_or(0);
           summary.shield_in += Number(cells[15]).value_or(0);
         }
+        if (cells.size() > 22) {
+          const auto at   = [&](size_t cell) { return Number(cells[cell]).value_or(0); };
+          auto&      sums = out ? summary.dealt : summary.taken;
+          sums.mitigated += at(16);
+          sums.isolytic_blocked += at(17);
+          sums.apex += at(18);
+          sums.isolytic += at(20);
+          sums.crit_blocked += at(21);
+          sums.polaron += at(22);
+        }
       }
     } else if (header.size() == 2) {
       // The loot comes first; a later two-column section holds buffs.
@@ -268,7 +295,9 @@ inline std::string Short(int64_t value)
   return std::to_string(value);
 }
 
-// The panel's text, TextMeshPro rich text: the result, then a table of the numbers, the bridge crew and the loot.
+// The panel's text, TextMeshPro rich text: the result and the matchup over the whole width, then two columns: the
+// battle on the left (rounds, hits, crits, hull, bridge crew, loot), the damage by type on the right, dealt and
+// taken. Damage types that are 0 both ways are left out.
 inline std::string PanelText(const Summary& summary)
 {
   const auto& player = summary.sides[0];
@@ -278,32 +307,56 @@ inline std::string PanelText(const Summary& summary)
                                                                                     : "#FFC857";
   // The text comes from the game and from player names: no tags of its own.
   const auto plain = [](const std::string& text) { return "<noparse>" + text + "</noparse>"; };
-  const auto row   = [](const char* name, const std::string& value) {
-    return std::string("<color=#8FA3B8>") + name + "</color><pos=42%>" + value + "\n";
+  const auto grey  = [](const std::string& text) { return "<color=#8FA3B8>" + text + "</color>"; };
+
+  std::vector<std::string> left;
+  const auto               row = [&](const char* name, const std::string& value) {
+    left.push_back(grey(name) + "<pos=22%>" + value);
   };
+  row("Runden", std::to_string(summary.rounds));
+  row("Treffer", std::to_string(summary.hits_out) + " raus / " + std::to_string(summary.hits_in) + " rein");
+  row("Crits", std::to_string(summary.crits_out) + " raus / " + std::to_string(summary.crits_in) + " rein");
+  if (player.hull > 0)
+    row("Hülle danach", std::to_string(player.hull_left * 100 / player.hull) + " %");
+  if (const auto repaired = Repaired(summary))
+    row("Repariert", Short(repaired) + " Hülle");
+  left.emplace_back();
+  left.push_back(grey("Brücke"));
+  for (const auto& officer : player.officers)
+    left.push_back(plain(officer));
+  left.emplace_back();
+  left.push_back(grey("Beute"));
+  if (summary.rewards.empty())
+    left.emplace_back("keine");
+  for (const auto& [name, count] : summary.rewards)
+    left.push_back(plain(name) + "<pos=40%>" + plain(count));
+
+  std::vector<std::string> right{grey("Schaden") + "<pos=72%>" + grey("raus") + "<pos=87%>" + grey("rein")};
+  const auto               damage = [&](const char* name, int64_t dealt, int64_t taken) {
+    if (dealt != 0 || taken != 0)
+      right.push_back(grey(name) + "<pos=72%>" + Short(dealt) + "<pos=87%>" + Short(taken));
+  };
+  const auto& out = summary.dealt;
+  const auto& in  = summary.taken;
+  damage("Hülle", enemy.hull - enemy.hull_left, summary.hull_in);
+  damage("Schild", enemy.shield - enemy.shield_left, summary.shield_in);
+  damage("Isolytisch", out.isolytic, in.isolytic);
+  damage("Polaron", out.polaron, in.polaron);
+  damage("Abgemildert", out.mitigated, in.mitigated);
+  damage("Isolytisch abgewehrt", out.isolytic_blocked, in.isolytic_blocked);
+  damage("Apex abgemildert", out.apex, in.apex);
+  damage("Krit abgewehrt", out.crit_blocked, in.crit_blocked);
+
   std::string text = std::string("<size=130%><b><color=") + color + ">" + plain(player.result) + "</color></b></size>\n";
   text += plain(player.ship) + " gegen " + plain(enemy.name) + " (" + plain(enemy.level) + ")\n";
-  text += "<color=#8FA3B8>" + plain(summary.location) + (summary.location.empty() ? "" : " · ") + plain(summary.time)
-          + "</color>\n\n";
-  text += row("Runden", std::to_string(summary.rounds));
-  text += row("Treffer", std::to_string(summary.hits_out) + " raus / " + std::to_string(summary.hits_in) + " rein");
-  text += row("Crits", std::to_string(summary.crits_out) + " raus / " + std::to_string(summary.crits_in) + " rein");
-  text += row("Schaden raus",
-              Short(enemy.hull - enemy.hull_left) + " Hülle, " + Short(enemy.shield - enemy.shield_left) + " Schild");
-  text += row("Schaden rein", Short(summary.hull_in) + " Hülle, " + Short(summary.shield_in) + " Schild");
-  if (const auto repaired = Repaired(summary))
-    text += row("Repariert", Short(repaired) + " Hülle");
-  if (player.hull > 0)
-    text += row("Hülle danach", std::to_string(player.hull_left * 100 / player.hull) + " %");
-  text += "\n<color=#8FA3B8>Brücke</color>\n";
-  for (const auto& officer : player.officers)
-    text += plain(officer) + "\n";
-  text += "\n<color=#8FA3B8>Beute</color>\n";
-  if (summary.rewards.empty())
-    text += "keine\n";
-  for (const auto& [name, count] : summary.rewards)
-    text += plain(name) + "<pos=78%>" + plain(count) + "\n";
-  text.pop_back();
+  text += grey(plain(summary.location) + (summary.location.empty() ? "" : " · ") + plain(summary.time)) + "\n";
+  for (size_t line = 0; line < std::max(left.size(), right.size()); ++line) {
+    text += "\n";
+    if (line < left.size())
+      text += left[line];
+    if (line < right.size())
+      text += "<pos=50%>" + right[line];
+  }
   return text;
 }
 
@@ -343,5 +396,20 @@ inline std::string Describe(const Summary& summary)
   for (size_t i = 0; i < summary.buffs.size(); ++i)
     text += (i ? ", " : " ") + summary.buffs[i].first + " " + summary.buffs[i].second;
   return text;
+}
+
+// A second log line: the damage by type, dealt / taken, every type.
+inline std::string DescribeDamage(const Summary& summary)
+{
+  const auto& out  = summary.dealt;
+  const auto& in   = summary.taken;
+  const auto  pair = [](const char* name, int64_t dealt, int64_t taken) {
+    return std::string(name) + " " + Short(dealt) + " / " + Short(taken);
+  };
+  return "Schaden nach Art, raus / rein: " + pair("Isolytisch", out.isolytic, in.isolytic) + "; "
+         + pair("Polaron", out.polaron, in.polaron) + "; "
+         + pair("Abgemildert", out.mitigated, in.mitigated) + "; "
+         + pair("Isolytisch abgewehrt", out.isolytic_blocked, in.isolytic_blocked) + "; "
+         + pair("Apex abgemildert", out.apex, in.apex) + "; " + pair("Krit abgewehrt", out.crit_blocked, in.crit_blocked);
 }
 } // namespace battle_summary

@@ -1,6 +1,7 @@
 // [ngo] battle_summary: when a battle report is opened, the game's own export of it is summed up in a panel at the
-// bottom of the report, between the two ships, and once in the log ("[BattleSummary] ..."). The panel closes with the report. Unity work runs on the
-// frame tick; the detours only note which report was asked for.
+// bottom of the report, between the two ships, and once in the log ("[BattleSummary] ..."). It steps aside while the
+// game's detailed log is open, and closes with the report. Unity work runs on the frame tick; the detours only note
+// which report was asked for.
 
 #include "config.h"
 #include "features/battle_summary.h"
@@ -45,7 +46,7 @@ float       battle_summary_placed_scale = 0;
 constexpr float kBattleSummaryFontSize   = 20;
 constexpr float kBattleSummaryLineHeight = 28;
 constexpr float kBattleSummaryPadding    = 18;
-constexpr float kBattleSummaryWidth      = 560;
+constexpr float kBattleSummaryWidth      = 1000;
 // Centred between the two ships, this far above the screen's bottom edge.
 constexpr float kBattleSummaryBottom = 48;
 
@@ -73,6 +74,7 @@ const battle_summary::Summary* BattleSummaryOf(BattleResultsManager* manager, in
     return nullptr;
   }
   spdlog::info("[BattleSummary] report {}: {}", id, battle_summary::Describe(*summary));
+  spdlog::info("[BattleSummary] report {}: {}", id, battle_summary::DescribeDamage(*summary));
   for (const auto& section : summary->unread)
     spdlog::info("[BattleSummary] report {}: a section not read yet: {}", id, section);
   return &battle_summary_cache.emplace(id, std::move(*summary)).first->second;
@@ -173,7 +175,9 @@ void BattleSummaryFrame()
   if (!shown && battle_summary_view_shown)
     battle_summary_current.reset();
   battle_summary_view_shown = shown;
-  auto* parent              = shown && battle_summary_current ? unity::CanvasRoot(view->transform()) : nullptr;
+  // The game's detailed log covers the report and says it all: the panel steps aside until it closes.
+  const bool log_open = shown && view->logShowing();
+  auto* parent = shown && !log_open && battle_summary_current ? unity::CanvasRoot(view->transform()) : nullptr;
 
   auto* label = battle_summary_label.Get<unity::TMP_Text>();
   auto* panel = battle_summary_panel.Get<unity::RectTransform>();

@@ -11,6 +11,10 @@
 // The battle report screen.
 struct BattleReportViewController : unity::Behaviour {
   using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.Combat", "BattleReportViewController">;
+
+  // The detailed battle log is open over the report.
+  bool logShowing()
+  { return Field<"_logShowing", bool>(); }
 };
 
 struct BattleResultsManager : il2cpp::Object {
