@@ -146,7 +146,8 @@ enable_experimental = false
 # Scale of the flat planet sprites in System View; 1.0 keeps the game's size
 fr_scale = 2.0
 
-# Amount of time to spend between transitions. Currently read but not applied
+# Longest blur fade, in seconds, when you change between system, galaxy and station. Values from 0.02 to 1.0 cut the
+# game's fade to that length; a shorter fade of the game's own stays. 0 keeps the game's fade.
 transition_time = 0.01
 
 # This specifies the amount to scale the UI by, 1.0 being default

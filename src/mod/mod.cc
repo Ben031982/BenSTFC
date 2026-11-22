@@ -165,6 +165,7 @@ constexpr const Feature* kFeatures[] = {
     &kLoginScreen,
     &kTransitionScreen,
     &kLoadingTips,
+    &kTransitionTime,
     // missions.cc
     &kMissionHud,
     &kDailyClaimFilter,

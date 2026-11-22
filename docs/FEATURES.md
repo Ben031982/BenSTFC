@@ -22,6 +22,7 @@ Features depend on the game client. A client update can break a hook until the m
 | Haven | Extend camera range while keeping road surfaces above the ground. `graphics.haven_zoom = 0.0` uses the native range. |
 | Fleet labels | Choose native, expanded, compact, or zoom-threshold detail separately for player and non-player fleets. |
 | Window and cursor | Resize the game window freely on Windows and control whether the game replaces the system cursor. |
+| Transition time | Cut the blur fade when you change between system, galaxy and station to `transition_time` seconds, from 0.02 to 1.0; 0 keeps the game's fade. Installed with `transitionscreenhooks`. |
 | Borderless full screen | Press F11 on Windows to switch between the window and borderless full screen on its monitor; F11 again gives the window back as it was. With `remember_window`, the game starts borderless again. `borderless_fullscreen` in `[graphics]`, on by default; the key is `toggle_borderless`. |
 | Window memory | Reopen the game window on Windows where you left it, with the same size and maximized state. `remember_window` in `[graphics]`; on by default, windowed mode only. |
 | Mirror space timer | Show the earliest remaining ship countdown in the viewed Mirror system, below Help All, Engage and Claim. Enable `mirror_space_timer` in `[graphics]`. Disabled by default. |
@@ -29,7 +30,7 @@ Features depend on the game client. A client update can break a hook until the m
 | Defense timer | Show the next territory defense from `loader_defenses` with its countdown, below the HUD timers. `defense_timer` in `[graphics]`; on by default, empty until defenses are set. German text. |
 
 `fr_scale` scales system-view backdrop renderables.
-The code reads `transition_time` and `system_pan_momentum`, but does not currently apply them.
+The code reads `system_pan_momentum`, but does not currently apply it.
 
 ## Keyboard controls
 

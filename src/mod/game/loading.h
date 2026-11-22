@@ -29,6 +29,17 @@ struct TransitionViewController : unity::Component {
   { return Field<"_animator", unity::Behaviour*>(); }
 };
 
+// The blur that fades the view out and in around a change of section, such as from the system to the galaxy.
+struct BlurController : il2cpp::Object {
+  using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.LoadingScreen", "BlurController">;
+
+  // How long the fade takes, in seconds.
+  float blurTime()
+  { return Field<"_blurTime", float>(); }
+  void SetBlurTime(float value)
+  { SetField<"_blurTime">(value); }
+};
+
 struct SlideShowViewController : il2cpp::Object {
   using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.SlideShow", "SlideShowViewController">;
 

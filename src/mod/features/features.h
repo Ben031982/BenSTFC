@@ -157,6 +157,7 @@ void HideKeybindBadges();
 extern const Feature kLoginScreen;
 extern const Feature kTransitionScreen;
 extern const Feature kLoadingTips;
+extern const Feature kTransitionTime;
 
 // missions.cc
 extern const Feature kMissionHud;

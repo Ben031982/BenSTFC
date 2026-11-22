@@ -487,6 +487,13 @@ void WindowPlacement()
   toml::table effective;
   Check(Config::Parse(toml::table{}, effective, false)->graphics.remember_window, "window memory is on by default");
   Check(Config::Parse(toml::table{}, effective, false)->graphics.borderless_fullscreen, "F11 is on by default");
+  Check(Config::Parse(toml::table{}, effective, false)->graphics.transition_time == 0.01f, "transition time default");
+  for (const auto* text : {"[graphics]\ntransition_time = -1.0", "[graphics]\ntransition_time = nan"})
+    Check(Config::Parse(toml::parse(text), effective, false)->graphics.transition_time == 0.01f,
+          "a negative or invalid transition time keeps the default");
+  Check(Config::Parse(toml::parse("[graphics]\ntransition_time = 0"), effective, false)->graphics.transition_time
+            == 0.0f,
+        "0 keeps the game's fade");
 }
 
 void UpstreamSettings()

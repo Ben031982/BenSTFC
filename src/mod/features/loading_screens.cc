@@ -1,5 +1,6 @@
 // The mod's loading screens, from [graphics] loader_*: the login background and logos, the transition screen between
-// sections, and the loading tips. They share the embedded images and reset together when the game reloads.
+// sections, and the loading tips. They share the embedded images and reset together when the game reloads. Also
+// [graphics] transition_time, which shortens the blur around a change of section.
 
 #include "config.h"
 #include "features/features.h"
@@ -443,6 +444,38 @@ bool InstallTransitionScreen()
   return hooks.Commit();
 }
 
+// --- Transition time ---
+
+// [graphics] transition_time: the blur that fades the view out and in around a change of section takes at most that
+// many seconds, within these limits; 0 keeps the game's. It is set on every tick of a fade, since each fade may
+// start again from the game's own duration. A shorter fade of the game's own is left alone.
+constexpr float kShortestTransition = 0.02f;
+constexpr float kLongestTransition  = 1.0f;
+
+void BlurController_TickBlurTransition_Hook(auto original, BlurController* _this)
+{
+  const float configured = Config::Get().graphics.transition_time;
+  if (configured > 0.0f) {
+    const float limit = std::clamp(configured, kShortestTransition, kLongestTransition);
+    if (const float game = _this->blurTime(); game > limit) {
+      static bool logged = false;
+      if (!std::exchange(logged, true))
+        spdlog::info("[TransitionTime] the game's {} s fade now takes {} s", game, limit);
+      _this->SetBlurTime(limit);
+    }
+  }
+  original(_this);
+}
+
+bool InstallTransitionTime()
+{
+  // With the full signature, so a client whose method changed leaves the hook out instead of calling it wrongly.
+  il2cpp::HookSet hooks("TransitionTime");
+  IL2CPP_STAGE(hooks, BlurController::Class::Method<void()>("TickBlurTransition"),
+               BlurController_TickBlurTransition_Hook);
+  return hooks.Commit();
+}
+
 bool InstallLoadingTips()
 {
   il2cpp::HookSet hooks("LoadingTips");
@@ -458,3 +491,4 @@ const Feature kTransitionScreen{"TransitionScreen", &Config::Patches::transition
                                 nullptr, ResetLoadingScreens};
 const Feature kLoadingTips{"LoadingTips", &Config::Patches::loadingtiphooks, InstallLoadingTips, nullptr,
                            ResetLoadingScreens};
+const Feature kTransitionTime{"TransitionTime", &Config::Patches::transitionscreenhooks, InstallTransitionTime};

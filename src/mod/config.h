@@ -238,7 +238,7 @@ public:
     // F11 ([shortcuts] toggle_borderless) switches between the window and borderless full screen on its monitor
     // (Windows).
     bool borderless_fullscreen = true;
-    // TODO(tashcan): read but nothing applies it.
+    // The longest blur around a change of section, in seconds (0.02 to 1); 0 keeps the game's.
     float transition_time        = 0.01f;
     float default_system_zoom    = 1750.0f;
     float system_zoom_preset_1   = 50.0f;

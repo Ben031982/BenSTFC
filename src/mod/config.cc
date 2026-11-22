@@ -712,7 +712,8 @@ void Config::Read(const toml::table& file, toml::table& effective, bool log_valu
   r.Read("graphics", "system_pan_momentum_falloff", g.system_pan_momentum_falloff);
   r.Read("graphics", "disable_target_camera_lock", g.disable_target_camera_lock);
   r.Read("graphics", "borderless_fullscreen", g.borderless_fullscreen);
-  r.Read("graphics", "transition_time", g.transition_time);
+  r.ReadValid("graphics", "transition_time", g.transition_time,
+              [](float v) { return std::isfinite(v) && v >= 0.0f; });
   r.Read("graphics", "default_system_zoom", g.default_system_zoom);
   r.Read("graphics", "system_zoom_preset_1", g.system_zoom_preset_1);
   r.Read("graphics", "system_zoom_preset_2", g.system_zoom_preset_2);
