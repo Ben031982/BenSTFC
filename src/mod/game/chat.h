@@ -140,8 +140,13 @@ struct ChatMessageWidget : unity::Component {
 struct ChatPreviewMessageWidget : unity::Component {
   using Class = il2cpp::Class<"Assembly-CSharp", "Digit.Prime.Chat", "ChatPreviewMessageWidget">;
 
+  // _text is the label's TextLocalizer; its Target is the label.
   unity::TMP_Text* text()
-  { return Field<"_text", unity::TMP_Text*>(); }
+  {
+    auto* localizer = Field<"_text", TextLocalizer*>();
+    auto* target    = localizer ? localizer->Target() : nullptr;
+    return target ? target->As<unity::TMP_Text>() : nullptr;
+  }
   ChatMessage* Context()
   { return Get<"Context", ChatMessage*>(); }
 };

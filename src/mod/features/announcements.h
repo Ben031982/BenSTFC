@@ -197,7 +197,8 @@ inline std::string BannerText(const Announcement& announcement)
          + ":</color> " + detail::NoParse(announcement.text);
 }
 
-// The alliance's ranks are numbered in order, the admiral's at one end; the commodore's is next to it.
-inline bool LeaderRank(int32_t sender, int32_t admiral)
-{ return std::abs(sender - admiral) <= 1; }
+// The alliance's ranks are numbered in order, the admiral's at one end; the commodore's is next to it. The admiral is
+// known by user id, so the admiral's own rank does not count: should ranks ever read as all the same, nobody passes.
+inline bool LeaderRank(int64_t sender, int64_t admiral)
+{ return sender - admiral == 1 || admiral - sender == 1; }
 } // namespace announcements

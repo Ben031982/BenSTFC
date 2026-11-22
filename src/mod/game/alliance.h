@@ -13,8 +13,8 @@
 struct AllianceRank : il2cpp::Object {
   using Class = il2cpp::Class<"Digit.Client.PrimeLib.Runtime", "Digit.PrimeServer.Models", "AllianceRank">;
 
-  int32_t Rank()
-  { return Get<"Rank", int32_t>(); }
+  int64_t Rank()
+  { return Get<"Rank", int64_t>(); }
 };
 
 struct AllianceProfile : il2cpp::Object {

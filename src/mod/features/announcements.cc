@@ -115,7 +115,7 @@ constexpr float kBannerFontSize = 15;
 // Two lines and the padding; a longer announcement ends in an ellipsis.
 constexpr float kBannerHeight = 50;
 // From the top of the HUD, below the two lines of the chat preview.
-constexpr float kBannerTop = 58;
+constexpr float kBannerTop = 95;
 
 unity::TMP_Text* CreateAnnouncementBanner(unity::Transform* drawer, unity::Transform* parent)
 {
