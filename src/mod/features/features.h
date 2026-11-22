@@ -89,6 +89,9 @@ extern const Feature kInstantCargo;
 // chat.cc
 extern const Feature kChat;
 
+// battle_summary.cc
+extern const Feature kBattleSummary;
+
 // announcements.cc
 extern const Feature kAnnouncements;
 // Takes up a leadership "!NGO" command from alliance chat, and says whether the message is one.

@@ -7,6 +7,7 @@
 #include "features/ship_shortcut_hint.h"
 #include "features/toast_text.h"
 #include "features/announcements.h"
+#include "features/battle_summary.h"
 #include "features/chat_highlight.h"
 #include "features/fleet_bar.h"
 #include "features/window_placement.h"
@@ -690,6 +691,65 @@ void Announcements()
         "an invalid number of days keeps the default");
 }
 
+void BattleSummary()
+{
+  using namespace battle_summary;
+  // A report as the game exports it (German client), with the player and alliance renamed.
+  constexpr std::string_view kReport = R"csv(Spielername	Spielerlevel	Ergebnis	Schiffsname	Schiffslevel	Schiffsstärke	Schiff-EP	Offizier Eins	Offizier Zwei	Offizier Drei	Hüllen-TP	Verbleibende Hüllen-TP	Schild-TP	Verbleibende Schild-TP	Standort	Zeitstempel
+Spieler	75	SIEG	U.S.S. DAUNTLESS	75	2118563072	0	Rachel Garrett	Phellun	SNW Black Ops Chapel	1444904344	1441984018	1625185219	1611417972	Mirror Romulus	22.11.2026 10:36:20
+Abbauer der Romulanischen Republik	70	NIEDERLAGE	Abbauer der Romulanischen Republik	70	85754028032	0	Commander der Romulanischen Republik	--	--	97264487838	0	64842991892	0	Mirror Romulus	22.11.2026 10:36:20
+
+Belohnungsname	Anzahl
+Riesentruhe	1
+
+Flottentyp	Angreifen	Verteidigung	Gesundheit	Schiffsfähigkeit	MANÖVER DES CAPTAINS	Offizier-Eins-Fähigkeit	Offizier-Zwei-Fähigkeit	Offizier-Drei-Fähigkeit	Offiziersangriffsbonus	Schaden pro Runde	Panzerungsdurchbruch	Schilddurchbruch	Treffsicherheit	Kritische Trefferchance	Kritischer Schaden	Offiziersverteidigungsbonus	Panzerung	Schildablenkung	Ausweichen	Offiziersgesundheitsbonus	Schild-TP	Hüllen-TP	Impulsgeschwin­digkeit	Warpreichweite	Warpgeschwindigkeit	Frachtkapazität	Geschützte Fracht	Abbaubonus	Debuff angewendet	Buff angewendet
+Spielerflotte 1	228673838	58299405	1831589888	Aktive Aufklärung---Heckausbau---Gruppierungs-Plünderung---Aktive Apex-Barriere	Befehlskette	Glorreiche Zukunft	Ruf einen Fachmann	Wir schaffen das	5	221620897	8444880	683775	669546	0,22	5,33	5	534192	499942	10625747	5	1625185219	2037994488	297	2128	2280,47	62207400	0	1	NEIN	NEIN
+Feindliche Flotte 1	1988350080	2711939760	81053739008	Demontage---Zwickmühle---Fotophobie	--	--	--	--	0	980311559	336012832	336012832	336012832	0,1	1,5	0	180795984	180795984	180795984	0	64842993664	97264484352	50	2	2	0	0	1	NEIN	NEIN
+
+Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreifer - Ist Armada?	Zielname	Zielallianz	Zielschiff	Ziel - Ist Armada?	Hyperthermischer Zerfall %	Hyperthermischer Stabilisator %	Kritischer Treffer?	Hüllenschaden	Schildschaden	Abgemilderter Schaden	Abgemilderter Isolytischer Schaden	Abgemilderte Apex-Barriere	Gesamtschaden	Isolytischer Totalschaden	Abgemilderter kritischer Schaden	Polaronschaden	Gemilderter Polaronschaden	Infusionsschaden	Gemilderter Infusionsschaden	Fähigkeitstyp	Fähigkeitswert	Fähigkeitsbezeichnung	Name der Figur mit der Fähigkeit	Ziel besiegt	Ziel zerstört	Waffen laden %
+1	1	Offizierfähigkeit	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	--	--	U.S.S. DAUNTLESS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	Officer	8	Eine Kampfchance	ZdK-Leonard-McCoy	--	--	--
+1	2	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	--	--	U.S.S. DAUNTLESS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	30	--	Agoniestand	--	--	--
+1	3	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	--	--	U.S.S. DAUNTLESS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	2000	--	Agoniestand	--	--	--
+1	4	Verbotene-Technologie-Fähigkeit	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	--	--	U.S.S. DAUNTLESS	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	ForbiddenTechAbility	100	--	Gedankenmacher	--	--	--
+1	5	Angreifen	Abbauer der Romulanischen Republik	--	Abbauer der Romulanischen Republik	NEIN	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	--	--	NEIN	1457796	6872465	130685112	17696926	51264396	189069723	18906972	0	0	0	0	0	--	--	--	--	--	--	--
+1	6	Angreifen	Abbauer der Romulanischen Republik	--	Abbauer der Romulanischen Republik	NEIN	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	--	--	NEIN	1462530	6894782	131109488	17754394	51430872	189683696	18968370	0	0	0	0	0	--	--	--	--	--	--	--
+1	7	Angreifen	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	Abbauer der Romulanischen Republik	--	Abbauer der Romulanischen Republik	NEIN	--	--	NEIN	6115108352	21063151616	1639228416	0	0	2495019520	26322468864	0	0	0	0	0	--	--	--	--	--	--	--
+1	8	Angreifen	Spieler	Allianz	U.S.S. DAUNTLESS	NEIN	Abbauer der Romulanischen Republik	--	Abbauer der Romulanischen Republik	NEIN	--	--	JA	118263963648	407353655296	31702077440	0	0	48252792832	509066903552	0	0	0	0	0	--	--	--	--	--	--	--
+1	9	Schild erschöpft	Abbauer der Romulanischen Republik	--	Abbauer der Romulanischen Republik	NEIN	Spieler	Allianz	Abbauer der Romulanischen Republik	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	JA	--	--
+1	10	Kämpfer vernichtet	Abbauer der Romulanischen Republik	--	Abbauer der Romulanischen Republik	NEIN	Spieler	Allianz	Abbauer der Romulanischen Republik	NEIN	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	--	JA	--
+)csv";
+  const auto summary = Parse(kReport);
+  Check(summary && summary->sides.size() == 2, "both sides of the report");
+  const auto& player = summary->sides[0];
+  const auto& enemy  = summary->sides[1];
+  Check(player.name == "Spieler" && player.result == "SIEG" && player.ship == "U.S.S. DAUNTLESS"
+            && enemy.name == "Abbauer der Romulanischen Republik" && enemy.level == "70",
+        "the player's side first, then the enemy");
+  Check(player.officers == std::vector<std::string>{"Rachel Garrett", "Phellun", "SNW Black Ops Chapel"}
+            && enemy.officers.size() == 1,
+        "the bridge officers, without empty seats");
+  Check(player.hull == 1444904344 && player.hull_left == 1441984018 && enemy.shield_left == 0,
+        "hull and shield before and after");
+  Check(summary->location == "Mirror Romulus" && summary->time == "22.11.2026 10:36:20", "where and when");
+  Check(summary->rewards.size() == 1 && summary->rewards[0].first == "Riesentruhe" && summary->rewards[0].second == "1",
+        "the rewards");
+  Check(summary->rounds == 1 && summary->hits_out == 2 && summary->hits_in == 2 && summary->crits_out == 1
+            && summary->crits_in == 0,
+        "rounds, hits and crits from the battle log");
+  Check(summary->unread.empty(), "every section of this report is read");
+  Check(Describe(*summary)
+            == "SIEG: U.S.S. DAUNTLESS gegen Abbauer der Romulanischen Republik (70) in Mirror Romulus, 22.11.2026 "
+               "10:36:20; Runden 1; Treffer 2 raus / 2 rein; Crits 1 raus / 0 rein; Schaden raus 97 Mrd Hülle + 65 "
+               "Mrd Schild; Schaden rein 2,9 Mio Hülle + 14 Mio Schild; Hülle danach 99 %; Brücke: Rachel Garrett, "
+               "Phellun, SNW Black Ops Chapel; Beute: Riesentruhe 1",
+        "the summary line");
+
+  Check(!Parse("") && !Parse("kaputt\n\nnoch kaputter\n"), "anything else is no report");
+  Check(Short(950) == "950" && Short(12'400) == "12 Tsd" && Short(2'920'326) == "2,9 Mio"
+            && Short(1'240'000'000) == "1,2 Mrd" && Short(97'264'487'838) == "97 Mrd",
+        "short numbers");
+}
+
 void WindowPlacement()
 {
   using namespace window_placement;
@@ -960,6 +1020,7 @@ int main()
   ChatHighlight();
   NgoSection();
   Announcements();
+  BattleSummary();
   WindowPlacement();
   UpstreamSettings();
   RenamedSettings();
