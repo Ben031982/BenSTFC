@@ -455,7 +455,7 @@ loader_tips_game_share = 1.5
 loader_defenses = [
   { system = "Aylus", level = 1, time = "27.11. 13:00" },
   { system = "Ohne Stufe", time = "2026-11-28 14:00" },
-  { system = "Kaputt", level = 1, time = "Fr 13:00" },
+  { system = "Kaputt", level = 1, time = "Fx 13:00" },
   { level = 2, time = "27.11. 13:00" },
 ])"),
                                     effective, false);
