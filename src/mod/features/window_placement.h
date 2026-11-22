@@ -1,7 +1,7 @@
 #pragma once
 
-// The game window saved by [graphics] remember_window, without touching Windows so it can be tested: the restored
-// (normal) rectangle and whether the window was maximized, kept as one line of text.
+// The game window saved by [graphics] remember_window, without touching Windows so it can be tested: its rectangle on
+// screen, or for a maximized window the rectangle it restores to, and whether it was maximized, as one line of text.
 
 #include <charconv>
 #include <cstdint>

@@ -124,10 +124,10 @@ bool InstallCursor()
 
 // --- Window memory ---
 
-// [graphics] remember_window: the window's restored rectangle, and whether it was maximized, go to a file named like
-// the vars file and come back once when the next session's window appears. Only a window with a title bar takes
-// part, so borderless and exclusive fullscreen stay the game's. Nothing is saved before that restore, so the
-// game's own first size never overwrites the saved one.
+// [graphics] remember_window: the window's rectangle, and whether it was maximized, go to a file named like the vars
+// file and come back once when the next session's window appears. Only a window with a title bar takes part, so
+// borderless and exclusive fullscreen stay the game's. Nothing is saved before that restore, so the game's own first
+// size never overwrites the saved one.
 bool                                       window_memory_restored = false;
 std::optional<window_placement::Placement> window_memory_saved;
 
@@ -142,19 +142,25 @@ std::filesystem::path WindowMemoryFile()
 bool HasTitleBar(HWND window)
 { return (GetWindowLongPtrW(window, GWL_STYLE) & WS_CAPTION) == WS_CAPTION; }
 
+// A maximized window is saved by the rectangle it restores to, so it comes back maximized and still shrinks to that
+// size. Any other window is saved where it is on screen: a window snapped to half the screen reports the size it had
+// before the snap as its normal rectangle, which would bring it back nearly full screen.
 std::optional<window_placement::Placement> CurrentWindowPlacement(HWND window)
 {
   WINDOWPLACEMENT placement{};
   placement.length = sizeof(placement);
   if (!GetWindowPlacement(window, &placement))
     return std::nullopt;
-  const auto& normal = placement.rcNormalPosition;
+  const bool maximized = placement.showCmd == SW_SHOWMAXIMIZED;
+  RECT       rect      = placement.rcNormalPosition;
+  if (!maximized && !GetWindowRect(window, &rect))
+    return std::nullopt;
   return window_placement::Placement{
-      .left      = static_cast<int32_t>(normal.left),
-      .top       = static_cast<int32_t>(normal.top),
-      .right     = static_cast<int32_t>(normal.right),
-      .bottom    = static_cast<int32_t>(normal.bottom),
-      .maximized = placement.showCmd == SW_SHOWMAXIMIZED,
+      .left      = static_cast<int32_t>(rect.left),
+      .top       = static_cast<int32_t>(rect.top),
+      .right     = static_cast<int32_t>(rect.right),
+      .bottom    = static_cast<int32_t>(rect.bottom),
+      .maximized = maximized,
   };
 }
 
@@ -169,14 +175,32 @@ void RestoreWindowPlacement(HWND window)
     spdlog::warn("[WindowMemory] ignoring the saved window '{}'", line);
     return;
   }
-  // SetWindowPlacement moves a rectangle that is off every monitor back onto one.
-  WINDOWPLACEMENT placement{};
-  placement.length = sizeof(placement);
-  placement.showCmd          = saved->maximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
-  placement.rcNormalPosition = {saved->left, saved->top, saved->right, saved->bottom};
-  if (!SetWindowPlacement(window, &placement)) {
-    spdlog::warn("[WindowMemory] could not restore the window: error {}", GetLastError());
-    return;
+  const RECT rect{saved->left, saved->top, saved->right, saved->bottom};
+  if (saved->maximized) {
+    // SetWindowPlacement maximizes on the monitor of the normal rectangle, moving one that is off every monitor back
+    // onto one.
+    WINDOWPLACEMENT placement{};
+    placement.length           = sizeof(placement);
+    placement.showCmd          = SW_SHOWMAXIMIZED;
+    placement.rcNormalPosition = rect;
+    if (!SetWindowPlacement(window, &placement)) {
+      spdlog::warn("[WindowMemory] could not restore the window: error {}", GetLastError());
+      return;
+    }
+  } else {
+    // SetWindowPos takes the rectangle as given, so one on no monitor (one since unplugged) is left to the game.
+    if (!MonitorFromRect(&rect, MONITOR_DEFAULTTONULL)) {
+      spdlog::info("[WindowMemory] the saved window {} is on no monitor; leaving the window where the game put it",
+                   line);
+      return;
+    }
+    if (IsZoomed(window))
+      ShowWindow(window, SW_SHOWNORMAL);
+    if (!SetWindowPos(window, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+                      SWP_NOZORDER | SWP_NOACTIVATE)) {
+      spdlog::warn("[WindowMemory] could not restore the window: error {}", GetLastError());
+      return;
+    }
   }
   window_memory_saved = saved;
   spdlog::info("[WindowMemory] restored the window to {}", line);
