@@ -960,6 +960,68 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
         "loot counts with dots between the thousands");
   Check(Grouped("0,15") == "0,15" && Grouped("7⇵ 154") == "7⇵ 154" && Grouped("--") == "--",
         "anything but a whole number stays as it is");
+
+  // An armada (an older export, without the polaron and infusion columns), the players renamed and the log cut to
+  // a few rows: the armada has the only row on top, the players are in the log.
+  constexpr std::string_view kArmadaReport = R"csv(Spielername	Spielerlevel	Ergebnis	Schiffsname	Schiffslevel	Schiffsstärke	Schiff-EP	Offizier Eins	Offizier Zwei	Offizier Drei	Hüllen-TP	Verbleibende Hüllen-TP	Schild-TP	Verbleibende Schild-TP	Standort	Zeitstempel
+Ungewöhnliches klingonisches Garnison	71	NIEDERLAGE	Ungewöhnliches klingonisches Garnison	71	588740896489472	0	Klingonischer General	--	--	587083258670560	0	587083258670560	579443049494016	Gadyk	10.10.2026 12:22:58
+
+Belohnungsname	Anzahl
+Ungewöhnliche Offene-Armada-Fragmente	1833
+Riesentruhe	1
+
+Flottentyp	Angreifen	Verteidigung	Gesundheit	Schiffsfähigkeit	MANÖVER DES CAPTAINS	Offizier-Eins-Fähigkeit	Offizier-Zwei-Fähigkeit	Offizier-Drei-Fähigkeit	Offiziersangriffsbonus	Schaden pro Runde	Panzerungsdurchbruch	Schilddurchbruch	Treffsicherheit	Kritische Trefferchance	Kritischer Schaden	Offiziersverteidigungsbonus	Panzerung	Schildablenkung	Ausweichen	Offiziersgesundheitsbonus	Schild-TP	Hüllen-TP	Impulsgeschwin­digkeit	Warpreichweite	Warpgeschwindigkeit	Frachtkapazität	Geschützte Fracht	Abbaubonus	Debuff applied	Buff applied
+Spielerflotte 1	137540365584	109239350400	768377946112	Durch den Schleier---Isolytischer Schild	Plexurus der Borg	Durch Raum und Zeit	Das Recht auf Protest	Lass uns rocken!	56	134749065436	431749917	425865762	1233833861	0,42	6,38	56	1924118880	18167330168	1756420327	56	750142908281	786613001313	205	3803	3794,54	1668520	0	1	NEIN	NEIN
+Spielerflotte 2	62688540696	71458386560	542905958400	Durch den Schleier---Isolytischer Schild	Plexurus der Borg	Durch Raum und Zeit	Das Recht auf Protest	Lass uns rocken!	42	61240519708	1049522574	361421132	361421132	0,22	5,08	28	1379729607	1397386110	11514561714	42	511509006576	574302879753	204	3099	3557,21	1205400	0	1	NEIN	NEIN
+Spielerflotte 3	46228076656	31794608000	172335341568	Eine unzivilisierte Bedrohung---Ausgefuchste Sabotage	Plexurus der Borg	Durch Raum und Zeit	Das Recht auf Protest	Lass uns rocken!	52	45587211130	441284837	148890476	148890476	0,42	4,63	52	469598905	469598905	5419723637	45,5	180903945749	163766730042	220	2945	3295,09	2741200	0	1	NEIN	NEIN
+Feindliche Flotte 1	109415132160	1548223447040	587083240439808	Isolytische Explosionssprengköpfe---Kaskadenauslöschung---ship_ability_name_{0}	--	--	--	--	0	60658741366	5417377280	5417377280	5417377280	0,1	1,5	0	95275286528	95275286528	119094116352	0	587083240439808	587083240439808	90	2	2	0	0	1	NEIN	NEIN
+
+Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreifer - Ist Armada?	Zielname	Zielallianz	Zielschiff	Ziel - Ist Armada?	Hyperthermischer Zerfall %	Hyperthermischer Stabilisator %	Kritischer Treffer?	Hüllenschaden	Schildschaden	Abgemilderter Schaden	Abgemilderter Isolytischer Schaden	Abgemilderte Apex-Barriere	Gesamtschaden	Isolytischer Totalschaden	Abgemilderter kritischer Schaden	Fähigkeitstyp	Fähigkeitswert	Fähigkeitsbezeichnung	Name der Figur mit der Fähigkeit	Ziel besiegt	Ziel zerstört	Waffen laden %
+1	1	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	JA	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	Officer	1,4	Lass uns rocken!	Zefram Cochrane	--	--	--
+1	2	Offizierfähigkeit	Spieler	Allianz	PRAEFORTIS	JA	--	--	PRAEFORTIS	NEIN	--	--	--	--	--	--	--	--	--	--	--	Officer	2	Das Recht auf Protest	Mara Dalen	--	--	--
+1	3	Offizierfähigkeit	Mitspieler B	Allianz	U.S.S. SOCRATES	JA	--	--	U.S.S. SOCRATES	NEIN	--	--	--	--	--	--	--	--	--	--	--	Officer	1,4	Lass uns rocken!	Zefram Cochrane	--	--	--
+1	22	Angreifen	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	Spieler	Allianz	PRAEFORTIS	JA	--	--	NEIN	9566960640	10574009344	5051990016	331583029248	0	8474488832	348301500416	0	--	--	--	--	--	--	--
+1	23	Angreifen	Spieler	Allianz	PRAEFORTIS	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	991530123264	287863570432	285661822976	16810347855872	0	434797281280	17940606091264	0	--	--	--	--	--	--	--
+1	24	Angreifen	Spieler	Allianz	PRAEFORTIS	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	1072155131904	311270834176	308890042368	18177259995136	0	470152314880	19399423688704	0	--	--	--	--	--	--	--
+1	25	Angreifen	Spieler	Allianz	PRAEFORTIS	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	1163592859648	337817272320	335233449984	19727491530752	0	510248812544	21053886300160	0	--	--	--	--	--	--	--
+1	30	Angreifen	Mitspieler A	Allianz	USS VENGEANCE	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	38074855424	11053990912	22379493376	556922830848	0	34063154176	594368016384	0	--	--	--	--	--	--	--
+1	31	Angreifen	Mitspieler A	Allianz	USS VENGEANCE	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	38603227136	11207389184	22690058240	564651360256	0	34535854080	602616180736	0	--	--	--	--	--	--	--
+1	32	Angreifen	Mitspieler A	Allianz	USS VENGEANCE	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	39918075904	11589117952	23462893568	583883685888	0	35712167936	623141605376	0	--	--	--	--	--	--	--
+1	43	Angreifen	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	Mitspieler A	Allianz	USS VENGEANCE	JA	--	--	NEIN	4127009024	19455899648	2931088128	320208764928	0	8235695104	338487066624	0	--	--	--	--	--	--	--
+1	48	Angreifen	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	Mitspieler B	Allianz	U.S.S. SOCRATES	JA	--	--	NEIN	3240821504	15278157824	4994923008	336647258112	925948032	8576890240	352510218240	0	--	--	--	--	--	--	--
+1	55	Angreifen	Mitspieler B	Allianz	U.S.S. SOCRATES	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	1253701320704	363977801728	322056028160	21559081172992	0	490191814656	23008624508928	0	--	--	--	--	--	--	--
+1	56	Angreifen	Mitspieler B	Allianz	U.S.S. SOCRATES	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	1227671076864	356420616192	315369259008	21111454564352	0	480014106624	22530901409792	0	--	--	--	--	--	--	--
+1	57	Angreifen	Mitspieler B	Allianz	U.S.S. SOCRATES	JA	Ungewöhnliches klingonisches Garnison	--	Ungewöhnliches klingonisches Garnison	NEIN	--	--	JA	1390365638656	403654541312	357162942464	23909208424448	0	543626985472	25516764561408	0	--	--	--	--	--	--	--)csv";
+  const auto armada = Parse(kArmadaReport);
+  Check(armada && armada->armada_players == 3 && armada->sides.size() == 2 && armada->sides[0].result == "SIEG"
+            && armada->sides[0].ship == "3 Spieler" && armada->sides[1].result == "NIEDERLAGE",
+        "an armada: the players together against it, the result turned to their side");
+  Check(armada->hits_out == 9 && armada->crits_out == 9 && armada->hits_in == 3 && armada->crits_in == 0
+            && armada->hull_in == 16934791168 && armada->shield_in == 45308066816,
+        "every player's hits are dealt, the armada's taken");
+  Check(armada->dealt.isolytic == 131270332362752 && armada->dealt.isolytic_blocked == 123000301420544
+            && armada->taken.isolytic == 1039298785280 && armada->taken.apex == 925948032
+            && armada->dealt.polaron == 0 && armada->dealt.infusion == 0,
+        "the armada's damage by type, from the older export's columns");
+  Check(Describe(*armada)
+            == "SIEG: 3 Spieler gegen Ungewöhnliches klingonisches Garnison (71) in Gadyk, 10.10.2026 12:22:58; "
+               "Runden 1; Treffer 9 raus / 3 rein; Crits 9 raus / 0 rein; Schaden raus 587 Bio Hülle + 7,6 Bio "
+               "Schild; Schaden rein 17 Mrd Hülle + 45 Mrd Schild; Armada-Hülle danach 0 %; Beute: Ungewöhnliche "
+               "Offene-Armada-Fragmente 1833, Riesentruhe 1",
+        "the armada's summary line");
+  const auto armada_panel = PanelText(*armada);
+  Check(armada_panel.starts_with("<size=130%><b><color=#5EE07A><noparse>SIEG</noparse></color></b></size>\n"
+                                 "<noparse>3 Spieler</noparse> gegen <noparse>Ungewöhnliches klingonisches "
+                                 "Garnison</noparse> (<noparse>71</noparse>)"),
+        "the armada's panel: the players together against the armada");
+  Check(armada_panel.contains("<color=#8FA3B8>Armada-Hülle</color><pos=22%>0 % übrig")
+            && armada_panel.contains("<color=#8FA3B8>Armada-Schild</color><pos=22%>98 % übrig")
+            && armada_panel.contains("<pos=87%><color=#8FA3B8>von euch</color>")
+            && armada_panel.contains("<pos=40%><noparse>1.833</noparse>") && !armada_panel.contains("Brücke")
+            && !armada_panel.contains("Hülle danach"),
+        "what is left of the armada in place of the player's hull and bridge");
+  const auto armada_only = kArmadaReport.substr(0, kArmadaReport.find("\n\n"));
+  Check(!Parse(armada_only), "a single row without a battle log is no report");
 }
 
 void WindowPlacement()

@@ -48,8 +48,11 @@ struct DamageTypes {
 };
 
 struct Summary {
-  // The report's first rows: the player's side first.
+  // The report's first rows: the player's side first. In an armada, the first side is the players together, who
+  // have no row of their own: only its result and its ship ("3 Spieler") are set.
   std::vector<Side>                                sides;
+  // The players in an armada's battle log; 0 for a battle of two sides.
+  int32_t                                          armada_players = 0;
   std::string                                      location;
   std::string                                      time;
   std::vector<std::pair<std::string, std::string>> rewards;
@@ -212,7 +215,7 @@ inline std::optional<Summary> Parse(std::string_view csv)
 {
   using namespace detail;
   const auto sections = Sections(csv);
-  if (sections.empty() || sections.front().size() < 3 || sections.front().front().size() < 16)
+  if (sections.empty() || sections.front().size() < 2 || sections.front().front().size() < 16)
     return std::nullopt;
 
   Summary summary;
@@ -235,10 +238,14 @@ inline std::optional<Summary> Parse(std::string_view csv)
     }
     summary.sides.push_back(std::move(side));
   }
-  if (summary.sides.size() < 2)
+  if (summary.sides.empty())
     return std::nullopt;
-  const auto& player    = summary.sides.front().name;
-  bool        loot_read = false;
+  // An armada's report has a row for the armada only; the players are in the battle log, marked as in the armada.
+  // Their hits are all dealt, the armada's all taken.
+  const bool                    armada    = summary.sides.size() == 1;
+  const std::string             player    = summary.sides.front().name;
+  std::vector<std::string_view> players;
+  bool                          loot_read = false;
 
   for (size_t index = 1; index < sections.size(); ++index) {
     const auto& section = sections[index];
@@ -252,6 +259,11 @@ inline std::optional<Summary> Parse(std::string_view csv)
           continue;
         if (const auto round = Number(cells[0]); round && *round > summary.rounds)
           summary.rounds = static_cast<int32_t>(*round);
+        if (armada)
+          for (const auto [name, in_armada] : {std::pair{cells[3], cells[6]}, std::pair{cells[7], cells[10]}})
+            if (Yes(in_armada) && !Empty(name) && name != player
+                && std::find(players.begin(), players.end(), name) == players.end())
+              players.push_back(name);
         // An attack has damage; other events leave the damage columns empty.
         if (Empty(cells[14]) && Empty(cells[15]))
           continue;
@@ -261,7 +273,7 @@ inline std::optional<Summary> Parse(std::string_view csv)
           missed = Real(cells[cell]).value_or(0) == 0;
         if (missed)
           continue;
-        const bool out = cells[3] == player;
+        const bool out = armada ? cells[3] != player : cells[3] == player;
         (out ? summary.hits_out : summary.hits_in) += 1;
         if (Yes(cells[13]))
           (out ? summary.crits_out : summary.crits_in) += 1;
@@ -297,6 +309,23 @@ inline std::optional<Summary> Parse(std::string_view csv)
       summary.unread.push_back(text);
     }
   }
+  if (armada) {
+    if (players.empty() || summary.rounds == 0)
+      return std::nullopt;
+    // The report is written as the armada saw it.
+    const auto& result   = summary.sides.front().result;
+    const auto  opposite = result == "SIEG"         ? "NIEDERLAGE"
+                           : result == "NIEDERLAGE" ? "SIEG"
+                           : result == "VICTORY"    ? "DEFEAT"
+                           : result == "DEFEAT"     ? "VICTORY"
+                                                    : result;
+    summary.armada_players = static_cast<int32_t>(players.size());
+    summary.sides.insert(summary.sides.begin(),
+                         Side{.result = opposite, .ship = std::to_string(players.size()) + " Spieler"});
+    return summary;
+  }
+  if (summary.sides.size() < 2)
+    return std::nullopt;
   // Without a battle log, the damage taken is what the hull and shield lost; a destroyed ship cannot lose more than
   // the hull it had, beyond which the last hit is overkill.
   const auto& side = summary.sides.front();
@@ -394,7 +423,8 @@ inline constexpr const char* kAmber = "#FFC857";
 // The summary as the panel and the copied image show it: the result and the matchup over the whole width, then two
 // columns: the battle on the left (rounds, hits, crits, hull, bridge crew, loot), the damage by type on the right,
 // dealt in green and taken in red, and below it, in plain white, what the enemy's defenses took off the player's
-// hits and what the player's took off the enemy's. Types that are 0 both ways are left out.
+// hits and what the player's took off the enemy's. Types that are 0 both ways are left out. An armada is summed up
+// for all players together, with what is left of the armada in place of the player's hull and bridge.
 inline std::vector<Line> Layout(const Summary& summary)
 {
   const auto& player = summary.sides[0];
@@ -414,10 +444,16 @@ inline std::vector<Line> Layout(const Summary& summary)
     row("Hülle danach", Percent(player.hull_left, player.hull));
   if (const auto repaired = Repaired(summary))
     row("Repariert", Short(repaired) + " Hülle");
-  left.emplace_back();
-  left.push_back({{{0, "Brücke", kGrey}}});
-  for (const auto& officer : player.officers)
-    left.push_back({{{0, officer, "", true}}});
+  if (summary.armada_players > 0 && enemy.hull > 0)
+    row("Armada-Hülle", Percent(enemy.hull_left, enemy.hull) + " übrig");
+  if (summary.armada_players > 0 && enemy.shield > 0)
+    row("Armada-Schild", Percent(enemy.shield_left, enemy.shield) + " übrig");
+  if (!player.officers.empty()) {
+    left.emplace_back();
+    left.push_back({{{0, "Brücke", kGrey}}});
+    for (const auto& officer : player.officers)
+      left.push_back({{{0, officer, "", true}}});
+  }
   left.emplace_back();
   left.push_back({{{0, "Beute", kGrey}}});
   if (summary.rewards.empty())
@@ -449,7 +485,9 @@ inline std::vector<Line> Layout(const Summary& summary)
   defended("Krit-Abmilderung", out.crit_blocked, in.crit_blocked);
   if (!defense.empty()) {
     right.emplace_back();
-    right.push_back({{{50, "Abgewehrt", kGrey}, {72, "vom Gegner", kGrey}, {87, "von dir", kGrey}}});
+    right.push_back({{{50, "Abgewehrt", kGrey},
+                      {72, "vom Gegner", kGrey},
+                      {87, summary.armada_players > 0 ? "von euch" : "von dir", kGrey}}});
     right.insert(right.end(), defense.begin(), defense.end());
   }
 
@@ -525,7 +563,10 @@ inline std::string Describe(const Summary& summary)
   text += " + " + Short(summary.shield_in) + " Schild";
   if (player.hull > 0)
     text += "; Hülle danach " + Percent(player.hull_left, player.hull);
-  text += "; Brücke:";
+  if (summary.armada_players > 0 && enemy.hull > 0)
+    text += "; Armada-Hülle danach " + Percent(enemy.hull_left, enemy.hull);
+  if (!player.officers.empty())
+    text += "; Brücke:";
   for (size_t i = 0; i < player.officers.size(); ++i)
     text += (i ? ", " : " ") + player.officers[i];
   text += "; Beute:";
