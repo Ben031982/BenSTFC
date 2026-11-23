@@ -47,8 +47,8 @@ constexpr float kBattleSummaryFontSize   = 20;
 constexpr float kBattleSummaryLineHeight = 28;
 constexpr float kBattleSummaryPadding    = 18;
 constexpr float kBattleSummaryWidth      = 1000;
-// Centred between the two ships, this far above the screen's bottom edge.
-constexpr float kBattleSummaryBottom = 48;
+// Centred between the two ships, this far above the screen's bottom edge: above the report's reward bar.
+constexpr float kBattleSummaryBottom = 160;
 
 // The summary of a fetched report, made once; null while it is not fetched or when its export does not parse.
 const battle_summary::Summary* BattleSummaryOf(BattleResultsManager* manager, int64_t id)

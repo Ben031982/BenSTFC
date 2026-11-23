@@ -874,8 +874,13 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
   Check(panel.contains("<pos=50%><color=#8FA3B8>Polaron</color><pos=72%><color=#5EE07A>0</color><pos=87%>"
                         "<color=#FF6B6B>83 Mrd</color>")
             && panel.contains("<pos=50%><color=#8FA3B8>Infusion</color><pos=72%><color=#5EE07A>3,7 Bio</color>")
-            && !panel.contains("Krit abgewehrt"),
+            && !panel.contains("Krit-Abmilderung"),
         "the damage table: dealt in green, taken in red, without the types that are 0 both ways");
+  Check(panel.contains("<pos=50%><color=#8FA3B8>Abgewehrt</color><pos=72%><color=#8FA3B8>vom Gegner</color>"
+                       "<pos=87%><color=#8FA3B8>von dir</color>")
+            && panel.contains("<pos=50%><color=#8FA3B8>Standard</color><pos=72%>11 Bio<pos=87%>6,9 Mrd")
+            && panel.contains("<pos=50%><color=#8FA3B8>Apex-Barriere</color><pos=72%>0<pos=87%>1,9 Mrd"),
+        "what the defenses took off, in a block of its own, in plain white");
   Check(!PanelText(*summary).contains("Repariert"), "no repair line without a repair");
 
   // A loss: the ship destroyed by its last hit, the shield untouched, and the loot section only a header.
@@ -942,6 +947,14 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
         "numbers in exponent notation");
   Check(!Number("") && !Number("--") && !Number("1,5E") && !Number("E+16") && !Number("1,2,3") && !Number("9E+30"),
         "anything else is no number");
+  using detail::Real;
+  Check(Real("1,50000000000001E+16") == 15000000000000100.0 && Real("1,5E+20") == 1.5e20 && Real("0,25") == 0.25
+            && Real("10000000000000000000000") == 1e22 && Real("-2,5") == -2.5,
+        "numbers of any size");
+  Check(!Real("") && !Real("--") && !Real("1,5E") && !Real("1,2,3") && !Real("9E+300000") && !Real("9999999999E+300"),
+        "anything else is no number, nor one too large to hold");
+  Check(Short(9.68e15) == "9,7 Brd" && Short(1.754245e18) == "1,8 Trd" && Short(1.77011e21) == "1770 Trd",
+        "the V'ger's numbers");
 }
 
 void WindowPlacement()

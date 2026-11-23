@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -22,10 +24,11 @@ struct Side {
   std::string              result;
   std::string              ship;
   std::vector<std::string> officers;
-  int64_t                  hull        = 0;
-  int64_t                  hull_left   = 0;
-  int64_t                  shield      = 0;
-  int64_t                  shield_left = 0;
+  // Hit points can pass what a 64-bit integer holds (the V'ger), so they are floating point.
+  double hull        = 0;
+  double hull_left   = 0;
+  double shield      = 0;
+  double shield_left = 0;
 };
 
 // The hits' damage by type, summed over the battle as the game's detailed log shows it, except infusion: the game's
@@ -33,15 +36,15 @@ struct Side {
 // that carry infusion. Left out: the game's "standard damage" total, which can be negative, and its prevented
 // infusion, which flips sign.
 struct DamageTypes {
-  int64_t isolytic         = 0;
-  int64_t infusion         = 0;
-  int64_t polaron          = 0;
+  double isolytic         = 0;
+  double infusion         = 0;
+  double polaron          = 0;
   // What the target's defenses took off: mitigated standard damage, blocked isolytic damage, the Apex Barrier,
   // and the crit damage mitigation.
-  int64_t mitigated        = 0;
-  int64_t isolytic_blocked = 0;
-  int64_t apex             = 0;
-  int64_t crit_blocked     = 0;
+  double mitigated        = 0;
+  double isolytic_blocked = 0;
+  double apex             = 0;
+  double crit_blocked     = 0;
 };
 
 struct Summary {
@@ -58,8 +61,8 @@ struct Summary {
   int32_t                                          crits_out = 0;
   int32_t                                          crits_in  = 0;
   // The damage the player took, hit by hit; more than the hull lost when it was repaired during the battle.
-  int64_t hull_in   = 0;
-  int64_t shield_in = 0;
+  double hull_in   = 0;
+  double shield_in = 0;
   // By type: the player's hits, and the hits the player took.
   DamageTypes dealt;
   DamageTypes taken;
@@ -132,6 +135,48 @@ namespace detail
     return negative ? -digits : digits;
   }
 
+  // Any number as the export writes it, "1,50000000000001E+16" too, of any size. Whole numbers below 2^53, the
+  // export's mantissas times a power of ten included, come out exact.
+  inline std::optional<double> Real(std::string_view text)
+  {
+    if (const auto value = Integer(text))
+      return static_cast<double>(*value);
+    const auto exponent_at = text.find_first_of("Ee");
+    int64_t    exponent    = 0;
+    if (exponent_at != std::string_view::npos) {
+      auto exponent_text = text.substr(exponent_at + 1);
+      if (!exponent_text.empty() && exponent_text.front() == '+')
+        exponent_text.remove_prefix(1);
+      const auto parsed = Integer(exponent_text);
+      if (!parsed || *parsed < -300 || *parsed > 300)
+        return std::nullopt;
+      exponent = *parsed;
+      text     = text.substr(0, exponent_at);
+    }
+    const bool negative = !text.empty() && text.front() == '-';
+    if (negative)
+      text.remove_prefix(1);
+    const auto separator = text.find_first_of(",.");
+    const auto whole     = text.substr(0, separator);
+    const auto fraction  = separator == std::string_view::npos ? std::string_view{} : text.substr(separator + 1);
+    constexpr std::string_view kDigits = "0123456789";
+    if (whole.empty() || whole.find_first_not_of(kDigits) != whole.npos
+        || fraction.find_first_not_of(kDigits) != fraction.npos)
+      return std::nullopt;
+    double digits = 0;
+    for (const auto part : {whole, fraction})
+      for (const char digit : part)
+        digits = digits * 10 + (digit - '0');
+    exponent -= static_cast<int64_t>(fraction.size());
+    for (; exponent > 0; --exponent)
+      digits *= 10;
+    for (; exponent < 0; ++exponent)
+      digits /= 10;
+    if (!std::isfinite(digits))
+      return std::nullopt;
+    return negative ? -digits : digits;
+  }
+
   inline bool Yes(std::string_view text)
   { return text == "JA" || text == "Ja" || text == "ja" || text == "YES" || text == "Yes" || text == "yes"; }
 
@@ -180,10 +225,10 @@ inline std::optional<Summary> Parse(std::string_view csv)
     for (size_t officer = 7; officer <= 9; ++officer)
       if (!Empty(cells[officer]))
         side.officers.emplace_back(cells[officer]);
-    side.hull        = Number(cells[10]).value_or(0);
-    side.hull_left   = Number(cells[11]).value_or(0);
-    side.shield      = Number(cells[12]).value_or(0);
-    side.shield_left = Number(cells[13]).value_or(0);
+    side.hull        = Real(cells[10]).value_or(0);
+    side.hull_left   = Real(cells[11]).value_or(0);
+    side.shield      = Real(cells[12]).value_or(0);
+    side.shield_left = Real(cells[13]).value_or(0);
     if (summary.sides.empty()) {
       summary.location = std::string(cells[14]);
       summary.time     = std::string(cells[15]);
@@ -213,7 +258,7 @@ inline std::optional<Summary> Parse(std::string_view csv)
         // A shot with 0 in every damage column missed, even when it is marked critical.
         bool missed = true;
         for (size_t cell = 14; cell <= 25 && cell < cells.size() && missed; ++cell)
-          missed = Number(cells[cell]).value_or(0) == 0;
+          missed = Real(cells[cell]).value_or(0) == 0;
         if (missed)
           continue;
         const bool out = cells[3] == player;
@@ -221,11 +266,11 @@ inline std::optional<Summary> Parse(std::string_view csv)
         if (Yes(cells[13]))
           (out ? summary.crits_out : summary.crits_in) += 1;
         if (!out) {
-          summary.hull_in += Number(cells[14]).value_or(0);
-          summary.shield_in += Number(cells[15]).value_or(0);
+          summary.hull_in += Real(cells[14]).value_or(0);
+          summary.shield_in += Real(cells[15]).value_or(0);
         }
         if (cells.size() > 22) {
-          const auto at   = [&](size_t cell) { return Number(cells[cell]).value_or(0); };
+          const auto at   = [&](size_t cell) { return Real(cells[cell]).value_or(0); };
           auto&      sums = out ? summary.dealt : summary.taken;
           sums.mitigated += at(16);
           sums.isolytic_blocked += at(17);
@@ -266,21 +311,26 @@ inline std::optional<Summary> Parse(std::string_view csv)
 
 // The hull repaired during the battle: what the hits took beyond what the hull lost. Nothing when the ship was
 // destroyed (the last hit's overkill is no repair) or for rounding noise below 1 %.
-inline int64_t Repaired(const Summary& summary)
+inline double Repaired(const Summary& summary)
 {
   const auto& player   = summary.sides.front();
   const auto  repaired = summary.hull_in - (player.hull - player.hull_left);
   return player.hull_left > 0 && repaired > 0 && repaired * 100 >= summary.hull_in ? repaired : 0;
 }
 
-// "1,24 Mrd", "312 Tsd" or "950": short enough for the panel.
-inline std::string Short(int64_t value)
+// "1,24 Mrd", "312 Tsd" or "950": short enough for the panel. Up to Trd (Trillion, 10^18): the V'ger's numbers.
+inline std::string Short(double value)
 {
-  const auto scaled = [](int64_t number, int64_t unit, const char* name) {
+  const auto whole = [](double number) {
+    char buffer[400];
+    std::snprintf(buffer, sizeof buffer, "%.0f", std::floor(number + 0.5));
+    return std::string(buffer);
+  };
+  const auto scaled = [&](double number, double unit, const char* name) {
     // One decimal below 10, none above.
-    const int64_t tenths = (number * 10 + unit / 2) / unit;
+    const auto tenths = static_cast<int64_t>(std::floor(number * 10 / unit + 0.5));
     if (tenths >= 100)
-      return std::to_string((number + unit / 2) / unit) + " " + name;
+      return whole(number / unit) + " " + name;
     std::string text = std::to_string(tenths / 10);
     if (tenths % 10 != 0)
       text += "," + std::to_string(tenths % 10);
@@ -288,16 +338,24 @@ inline std::string Short(int64_t value)
   };
   if (value < 0)
     return "-" + Short(-value);
-  if (value >= 1'000'000'000'000)
-    return scaled(value, 1'000'000'000'000, "Bio");
-  if (value >= 1'000'000'000)
-    return scaled(value, 1'000'000'000, "Mrd");
-  if (value >= 1'000'000)
-    return scaled(value, 1'000'000, "Mio");
-  if (value >= 10'000)
-    return scaled(value, 1'000, "Tsd");
-  return std::to_string(value);
+  if (value >= 1e18)
+    return scaled(value, 1e18, "Trd");
+  if (value >= 1e15)
+    return scaled(value, 1e15, "Brd");
+  if (value >= 1e12)
+    return scaled(value, 1e12, "Bio");
+  if (value >= 1e9)
+    return scaled(value, 1e9, "Mrd");
+  if (value >= 1e6)
+    return scaled(value, 1e6, "Mio");
+  if (value >= 1e4)
+    return scaled(value, 1e3, "Tsd");
+  return whole(value);
 }
+
+// Whole percent of `part` in `total`, rounded down.
+inline std::string Percent(double part, double total)
+{ return std::to_string(static_cast<int64_t>(part * 100 / total)) + " %"; }
 
 // The panel's text, TextMeshPro rich text: the result and the matchup over the whole width, then two columns: the
 // battle on the left (rounds, hits, crits, hull, bridge crew, loot), the damage by type on the right, dealt and
@@ -321,7 +379,7 @@ inline std::string PanelText(const Summary& summary)
   row("Treffer", std::to_string(summary.hits_out) + " raus / " + std::to_string(summary.hits_in) + " rein");
   row("Crits", std::to_string(summary.crits_out) + " raus / " + std::to_string(summary.crits_in) + " rein");
   if (player.hull > 0)
-    row("Hülle danach", std::to_string(player.hull_left * 100 / player.hull) + " %");
+    row("Hülle danach", Percent(player.hull_left, player.hull));
   if (const auto repaired = Repaired(summary))
     row("Repariert", Short(repaired) + " Hülle");
   left.emplace_back();
@@ -335,9 +393,10 @@ inline std::string PanelText(const Summary& summary)
   for (const auto& [name, count] : summary.rewards)
     left.push_back(plain(name) + "<pos=40%>" + plain(count));
 
+  // Damage dealt in green and taken in red; below it, in plain white, what the enemy's defenses took off the
+  // player's hits and what the player's took off the enemy's.
   std::vector<std::string> right{grey("Schaden") + "<pos=72%>" + grey("raus") + "<pos=87%>" + grey("rein")};
-  // Dealt in green, taken in red.
-  const auto damage = [&](const char* name, int64_t dealt, int64_t taken) {
+  const auto damage = [&](const char* name, double dealt, double taken) {
     if (dealt != 0 || taken != 0)
       right.push_back(grey(name) + "<pos=72%><color=#5EE07A>" + Short(dealt) + "</color><pos=87%><color=#FF6B6B>"
                       + Short(taken) + "</color>");
@@ -349,10 +408,21 @@ inline std::string PanelText(const Summary& summary)
   damage("Isolytisch", out.isolytic, in.isolytic);
   damage("Infusion", out.infusion, in.infusion);
   damage("Polaron", out.polaron, in.polaron);
-  damage("Abgemildert", out.mitigated, in.mitigated);
-  damage("Isolytisch abgewehrt", out.isolytic_blocked, in.isolytic_blocked);
-  damage("Apex abgemildert", out.apex, in.apex);
-  damage("Krit abgewehrt", out.crit_blocked, in.crit_blocked);
+
+  std::vector<std::string> defense;
+  const auto               defended = [&](const char* name, double by_enemy, double by_player) {
+    if (by_enemy != 0 || by_player != 0)
+      defense.push_back(grey(name) + "<pos=72%>" + Short(by_enemy) + "<pos=87%>" + Short(by_player));
+  };
+  defended("Standard", out.mitigated, in.mitigated);
+  defended("Isolytisch", out.isolytic_blocked, in.isolytic_blocked);
+  defended("Apex-Barriere", out.apex, in.apex);
+  defended("Krit-Abmilderung", out.crit_blocked, in.crit_blocked);
+  if (!defense.empty()) {
+    right.emplace_back();
+    right.push_back(grey("Abgewehrt") + "<pos=72%>" + grey("vom Gegner") + "<pos=87%>" + grey("von dir"));
+    right.insert(right.end(), defense.begin(), defense.end());
+  }
 
   std::string text = std::string("<size=130%><b><color=") + color + ">" + plain(player.result) + "</color></b></size>\n";
   text += plain(player.ship) + " gegen " + plain(enemy.name) + " (" + plain(enemy.level) + ")\n";
@@ -361,7 +431,7 @@ inline std::string PanelText(const Summary& summary)
     text += "\n";
     if (line < left.size())
       text += left[line];
-    if (line < right.size())
+    if (line < right.size() && !right[line].empty())
       text += "<pos=50%>" + right[line];
   }
   return text;
@@ -389,7 +459,7 @@ inline std::string Describe(const Summary& summary)
     text += " (" + Short(repaired) + " repariert)";
   text += " + " + Short(summary.shield_in) + " Schild";
   if (player.hull > 0)
-    text += "; Hülle danach " + std::to_string(player.hull_left * 100 / player.hull) + " %";
+    text += "; Hülle danach " + Percent(player.hull_left, player.hull);
   text += "; Brücke:";
   for (size_t i = 0; i < player.officers.size(); ++i)
     text += (i ? ", " : " ") + player.officers[i];
@@ -410,7 +480,7 @@ inline std::string DescribeDamage(const Summary& summary)
 {
   const auto& out  = summary.dealt;
   const auto& in   = summary.taken;
-  const auto  pair = [](const char* name, int64_t dealt, int64_t taken) {
+  const auto  pair = [](const char* name, double dealt, double taken) {
     return std::string(name) + " " + Short(dealt) + " / " + Short(taken);
   };
   return "Schaden nach Art, raus / rein: " + pair("Isolytisch", out.isolytic, in.isolytic) + "; "
