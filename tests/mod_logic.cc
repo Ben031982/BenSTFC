@@ -955,6 +955,11 @@ Runde	Kampf-Ereignis	Typ	Angreifername	Angreiferallianz	Angreiferschiff	Angreife
         "anything else is no number, nor one too large to hold");
   Check(Short(9.68e15) == "9,7 Brd" && Short(1.754245e18) == "1,8 Trd" && Short(1.77011e21) == "1770 Trd",
         "the V'ger's numbers");
+  Check(Grouped("8268261") == "8.268.261" && Grouped("1000") == "1.000" && Grouped("999") == "999"
+            && Grouped("1") == "1" && Grouped("") == "",
+        "loot counts with dots between the thousands");
+  Check(Grouped("0,15") == "0,15" && Grouped("7⇵ 154") == "7⇵ 154" && Grouped("--") == "--",
+        "anything but a whole number stays as it is");
 }
 
 void WindowPlacement()

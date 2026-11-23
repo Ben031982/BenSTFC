@@ -131,7 +131,7 @@ fn addModSources(ctx: *const Ctx, module: *std.Build.Module, flags: []const []co
         module.addCSourceFiles(.{ .root = root, .files = globFiles(b, root, "", &.{".mm"}, &.{}), .flags = flags });
         module.linkFramework("Cocoa", .{});
     } else if (ctx.isWindows()) {
-        inline for (.{ "winmm", "rpcrt4", "runtimeobject" }) |lib| module.linkSystemLibrary(lib, .{});
+        inline for (.{ "winmm", "rpcrt4", "runtimeobject", "gdi32" }) |lib| module.linkSystemLibrary(lib, .{});
     }
 }
 

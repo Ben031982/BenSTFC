@@ -357,23 +357,55 @@ inline std::string Short(double value)
 inline std::string Percent(double part, double total)
 { return std::to_string(static_cast<int64_t>(part * 100 / total)) + " %"; }
 
-// The panel's text, TextMeshPro rich text: the result and the matchup over the whole width, then two columns: the
-// battle on the left (rounds, hits, crits, hull, bridge crew, loot), the damage by type on the right, dealt and
-// taken. Damage types that are 0 both ways are left out.
-inline std::string PanelText(const Summary& summary)
+// "8.268.261": a whole number with dots between the thousands; anything else as it is.
+inline std::string Grouped(const std::string& text)
+{
+  if (text.empty() || text.size() > 30 || text.find_first_not_of("0123456789") != std::string::npos)
+    return text;
+  std::string grouped;
+  for (size_t i = 0; i < text.size(); ++i) {
+    if (i > 0 && (text.size() - i) % 3 == 0)
+      grouped += '.';
+    grouped += text[i];
+  }
+  return grouped;
+}
+
+// A piece of a line of the summary: where it starts, in percent of the width (0 continues the line), its text, its
+// color as "#RRGGBB" (empty for the default), and whether the text comes from the game or a player, so it must not
+// be read as tags.
+struct Segment {
+  int32_t     at = 0;
+  std::string text;
+  std::string color;
+  bool        game = false;
+};
+struct Line {
+  std::vector<Segment> segments;
+  // The result, larger and bold.
+  bool headline = false;
+};
+
+inline constexpr const char* kGrey  = "#8FA3B8";
+inline constexpr const char* kGreen = "#5EE07A";
+inline constexpr const char* kRed   = "#FF6B6B";
+inline constexpr const char* kAmber = "#FFC857";
+
+// The summary as the panel and the copied image show it: the result and the matchup over the whole width, then two
+// columns: the battle on the left (rounds, hits, crits, hull, bridge crew, loot), the damage by type on the right,
+// dealt in green and taken in red, and below it, in plain white, what the enemy's defenses took off the player's
+// hits and what the player's took off the enemy's. Types that are 0 both ways are left out.
+inline std::vector<Line> Layout(const Summary& summary)
 {
   const auto& player = summary.sides[0];
   const auto& enemy  = summary.sides[1];
-  const auto  color  = player.result == "SIEG" || player.result == "VICTORY"        ? "#5EE07A"
-                       : player.result == "NIEDERLAGE" || player.result == "DEFEAT" ? "#FF6B6B"
-                                                                                    : "#FFC857";
-  // The text comes from the game and from player names: no tags of its own.
-  const auto plain = [](const std::string& text) { return "<noparse>" + text + "</noparse>"; };
-  const auto grey  = [](const std::string& text) { return "<color=#8FA3B8>" + text + "</color>"; };
+  const auto  color  = player.result == "SIEG" || player.result == "VICTORY"        ? kGreen
+                       : player.result == "NIEDERLAGE" || player.result == "DEFEAT" ? kRed
+                                                                                    : kAmber;
 
-  std::vector<std::string> left;
-  const auto               row = [&](const char* name, const std::string& value) {
-    left.push_back(grey(name) + "<pos=22%>" + value);
+  std::vector<Line> left;
+  const auto        row = [&](const char* name, const std::string& value) {
+    left.push_back({{{0, name, kGrey}, {22, value}}});
   };
   row("Runden", std::to_string(summary.rounds));
   row("Treffer", std::to_string(summary.hits_out) + " raus / " + std::to_string(summary.hits_in) + " rein");
@@ -383,23 +415,20 @@ inline std::string PanelText(const Summary& summary)
   if (const auto repaired = Repaired(summary))
     row("Repariert", Short(repaired) + " Hülle");
   left.emplace_back();
-  left.push_back(grey("Brücke"));
+  left.push_back({{{0, "Brücke", kGrey}}});
   for (const auto& officer : player.officers)
-    left.push_back(plain(officer));
+    left.push_back({{{0, officer, "", true}}});
   left.emplace_back();
-  left.push_back(grey("Beute"));
+  left.push_back({{{0, "Beute", kGrey}}});
   if (summary.rewards.empty())
-    left.emplace_back("keine");
+    left.push_back({{{0, "keine"}}});
   for (const auto& [name, count] : summary.rewards)
-    left.push_back(plain(name) + "<pos=40%>" + plain(count));
+    left.push_back({{{0, name, "", true}, {40, Grouped(count), "", true}}});
 
-  // Damage dealt in green and taken in red; below it, in plain white, what the enemy's defenses took off the
-  // player's hits and what the player's took off the enemy's.
-  std::vector<std::string> right{grey("Schaden") + "<pos=72%>" + grey("raus") + "<pos=87%>" + grey("rein")};
-  const auto damage = [&](const char* name, double dealt, double taken) {
+  std::vector<Line> right{{{{50, "Schaden", kGrey}, {72, "raus", kGrey}, {87, "rein", kGrey}}}};
+  const auto        damage = [&](const char* name, double dealt, double taken) {
     if (dealt != 0 || taken != 0)
-      right.push_back(grey(name) + "<pos=72%><color=#5EE07A>" + Short(dealt) + "</color><pos=87%><color=#FF6B6B>"
-                      + Short(taken) + "</color>");
+      right.push_back({{{50, name, kGrey}, {72, Short(dealt), kGreen}, {87, Short(taken), kRed}}});
   };
   const auto& out = summary.dealt;
   const auto& in  = summary.taken;
@@ -409,10 +438,10 @@ inline std::string PanelText(const Summary& summary)
   damage("Infusion", out.infusion, in.infusion);
   damage("Polaron", out.polaron, in.polaron);
 
-  std::vector<std::string> defense;
-  const auto               defended = [&](const char* name, double by_enemy, double by_player) {
+  std::vector<Line> defense;
+  const auto        defended = [&](const char* name, double by_enemy, double by_player) {
     if (by_enemy != 0 || by_player != 0)
-      defense.push_back(grey(name) + "<pos=72%>" + Short(by_enemy) + "<pos=87%>" + Short(by_player));
+      defense.push_back({{{50, name, kGrey}, {72, Short(by_enemy)}, {87, Short(by_player)}}});
   };
   defended("Standard", out.mitigated, in.mitigated);
   defended("Isolytisch", out.isolytic_blocked, in.isolytic_blocked);
@@ -420,20 +449,56 @@ inline std::string PanelText(const Summary& summary)
   defended("Krit-Abmilderung", out.crit_blocked, in.crit_blocked);
   if (!defense.empty()) {
     right.emplace_back();
-    right.push_back(grey("Abgewehrt") + "<pos=72%>" + grey("vom Gegner") + "<pos=87%>" + grey("von dir"));
+    right.push_back({{{50, "Abgewehrt", kGrey}, {72, "vom Gegner", kGrey}, {87, "von dir", kGrey}}});
     right.insert(right.end(), defense.begin(), defense.end());
   }
 
-  std::string text = std::string("<size=130%><b><color=") + color + ">" + plain(player.result) + "</color></b></size>\n";
-  text += plain(player.ship) + " gegen " + plain(enemy.name) + " (" + plain(enemy.level) + ")\n";
-  text += grey(plain(summary.location) + (summary.location.empty() ? "" : " · ") + plain(summary.time)) + "\n";
+  std::vector<Line> lines;
+  lines.push_back({{{0, player.result, color, true}}, true});
+  lines.push_back({{{0, player.ship, "", true},
+                    {0, " gegen "},
+                    {0, enemy.name, "", true},
+                    {0, " ("},
+                    {0, enemy.level, "", true},
+                    {0, ")"}}});
+  Line where;
+  if (!summary.location.empty())
+    where.segments = {{0, summary.location, kGrey, true}, {0, " · ", kGrey}};
+  where.segments.push_back({0, summary.time, kGrey, true});
+  lines.push_back(std::move(where));
+  lines.emplace_back();
   for (size_t line = 0; line < std::max(left.size(), right.size()); ++line) {
-    text += "\n";
+    Line merged;
     if (line < left.size())
-      text += left[line];
-    if (line < right.size() && !right[line].empty())
-      text += "<pos=50%>" + right[line];
+      merged.segments = left[line].segments;
+    if (line < right.size())
+      merged.segments.insert(merged.segments.end(), right[line].segments.begin(), right[line].segments.end());
+    lines.push_back(std::move(merged));
   }
+  return lines;
+}
+
+// The panel's text: the layout as TextMeshPro rich text.
+inline std::string PanelText(const Summary& summary)
+{
+  std::string text;
+  for (const auto& line : Layout(summary)) {
+    std::string rendered;
+    for (const auto& segment : line.segments) {
+      if (segment.at > 0)
+        rendered += "<pos=" + std::to_string(segment.at) + "%>";
+      if (!segment.color.empty())
+        rendered += "<color=" + segment.color + ">";
+      rendered += segment.game ? "<noparse>" + segment.text + "</noparse>" : segment.text;
+      if (!segment.color.empty())
+        rendered += "</color>";
+    }
+    if (line.headline)
+      rendered = "<size=130%><b>" + rendered + "</b></size>";
+    text += rendered + "\n";
+  }
+  if (!text.empty())
+    text.pop_back();
   return text;
 }
 
